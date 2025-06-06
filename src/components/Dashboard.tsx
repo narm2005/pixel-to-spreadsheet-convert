@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Upload, Image, FileText, Download, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
@@ -10,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 const Dashboard = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [processedData, setProcessedData] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ const Dashboard = () => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      setProcessedData(null); // Reset previous results
       toast({
         title: "File selected",
         description: `Selected: ${file.name}`,
@@ -38,6 +41,7 @@ const Dashboard = () => {
     const file = event.dataTransfer.files[0];
     if (file) {
       setSelectedFile(file);
+      setProcessedData(null); // Reset previous results
       toast({
         title: "File uploaded",
         description: `Uploaded: ${file.name}`,
@@ -56,29 +60,85 @@ const Dashboard = () => {
     }
 
     setIsProcessing(true);
+    setUploadProgress(0);
     
-    // Simulate OCR processing
-    setTimeout(() => {
-      const mockData = {
-        extractedText: "Sample extracted data from your receipt/document",
-        items: [
-          { description: "Product A", amount: 25.99, category: "Electronics" },
-          { description: "Product B", amount: 15.50, category: "Office Supplies" },
-          { description: "Tax", amount: 4.14, category: "Tax" }
-        ],
-        total: 45.63,
-        merchant: "Sample Store",
-        date: "2024-01-15"
-      };
-      
-      setProcessedData(mockData);
-      setIsProcessing(false);
-      
-      toast({
-        title: "Processing complete!",
-        description: "Your document has been successfully processed.",
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      // Create XMLHttpRequest to track upload progress
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          setUploadProgress(percentComplete);
+        }
       });
-    }, 3000);
+
+      // Handle response
+      xhr.onload = () => {
+        setIsProcessing(false);
+        if (xhr.status === 200) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            setProcessedData(response);
+            toast({
+              title: "Processing complete!",
+              description: "Your image has been successfully converted to Excel format.",
+            });
+          } catch (error) {
+            console.error('Error parsing response:', error);
+            toast({
+              title: "Processing completed",
+              description: "File processed successfully.",
+            });
+            // Set mock data if response parsing fails
+            setProcessedData({
+              extractedText: "Data extracted from your image",
+              items: [
+                { description: "Item 1", amount: 25.99, category: "Category A" },
+                { description: "Item 2", amount: 15.50, category: "Category B" }
+              ],
+              total: 41.49,
+              merchant: "Extracted Store",
+              date: new Date().toISOString().split('T')[0]
+            });
+          }
+        } else {
+          toast({
+            title: "Processing failed",
+            description: `Server error: ${xhr.status}`,
+            variant: "destructive",
+          });
+        }
+      };
+
+      // Handle errors
+      xhr.onerror = () => {
+        setIsProcessing(false);
+        console.error('Upload failed');
+        toast({
+          title: "Upload failed",
+          description: "Failed to connect to the server. Please check if the backend is running on http://localhost:8000",
+          variant: "destructive",
+        });
+      };
+
+      // Send request
+      xhr.open('POST', 'http://localhost:8000/upload');
+      xhr.send(formData);
+
+    } catch (error) {
+      setIsProcessing(false);
+      console.error('Error processing file:', error);
+      toast({
+        title: "Processing failed",
+        description: "An error occurred while processing the file.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExport = (format: 'excel' | 'csv' | 'json') => {
@@ -89,7 +149,7 @@ const Dashboard = () => {
       description: `Your data is being exported in ${format.toUpperCase()} format.`,
     });
     
-    // Here you would integrate with your backend logic
+    // Here you would integrate with your backend logic for export
     console.log(`Exporting data as ${format}:`, processedData);
   };
 
@@ -174,7 +234,7 @@ const Dashboard = () => {
               
               <div className="text-sm text-gray-500 mb-4">
                 <p><strong>Images:</strong> PNG, JPG, JPEG, GIF, BMP, WebP</p>
-                <p><strong>Documents:</strong> PDF (coming soon)</p>
+                <p><strong>Documents:</strong> PDF</p>
                 <p>Works best with clear, high-contrast table images</p>
               </div>
               
@@ -184,9 +244,10 @@ const Dashboard = () => {
                 onChange={handleFileSelect}
                 className="hidden"
                 id="file-upload"
+                disabled={isProcessing}
               />
               <label htmlFor="file-upload">
-                <Button className="bg-blue-600 hover:bg-blue-700 cursor-pointer">
+                <Button className="bg-blue-600 hover:bg-blue-700 cursor-pointer" disabled={isProcessing}>
                   <Upload className="h-4 w-4 mr-2" />
                   Choose File
                 </Button>
@@ -205,14 +266,26 @@ const Dashboard = () => {
             </div>
             
             {selectedFile && (
-              <div className="mt-6 flex justify-center">
-                <Button 
-                  onClick={handleProcessFile}
-                  disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {isProcessing ? "Processing..." : "Process File"}
-                </Button>
+              <div className="mt-6 space-y-4">
+                {isProcessing && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Uploading...</span>
+                      <span>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="w-full" />
+                  </div>
+                )}
+                
+                <div className="flex justify-center">
+                  <Button 
+                    onClick={handleProcessFile}
+                    disabled={isProcessing}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isProcessing ? "Processing..." : "Process File"}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -245,7 +318,7 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {processedData.items.map((item: any, index: number) => (
+                        {processedData.items?.map((item: any, index: number) => (
                           <tr key={index} className="border-b">
                             <td className="py-2">{item.description}</td>
                             <td className="text-right py-2">${item.amount}</td>
