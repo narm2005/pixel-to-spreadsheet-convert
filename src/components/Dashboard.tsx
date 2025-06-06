@@ -1,4 +1,4 @@
-
+import React from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,7 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const {
     selectedFile,
     isProcessing,
@@ -19,7 +19,7 @@ const Dashboard = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
-    handleExport
+    handleExport,
   } = useFileUpload();
 
   const handleSignOut = () => {
@@ -33,7 +33,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar isAuthenticated={true} onSignOut={handleSignOut} />
-      
+
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">

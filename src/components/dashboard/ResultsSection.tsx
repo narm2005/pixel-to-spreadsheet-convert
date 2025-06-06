@@ -9,6 +9,8 @@ interface ResultsSectionProps {
 }
 
 const ResultsSection = ({ processedData, onExport }: ResultsSectionProps) => {
+  console.log("ResultsSection processedData:", processedData);
+
   if (!processedData) return null;
 
   return (

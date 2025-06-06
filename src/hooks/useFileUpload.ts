@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,100 +34,99 @@ export const useFileUpload = () => {
   };
 
   const handleProcessFile = async () => {
-    if (!selectedFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a file to process.",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (!selectedFile) {
+    toast({
+      title: "No file selected",
+      description: "Please select a file to process.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    setIsProcessing(true);
-    setUploadProgress(0);
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+  setIsProcessing(true);
+  setUploadProgress(0);
 
-      const xhr = new XMLHttpRequest();
+  try {
+    const formData = new FormData();
+    formData.append("files", selectedFile);
 
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = (event.loaded / event.total) * 100;
-          setUploadProgress(percentComplete);
-        }
-      });
+    const xhr = new XMLHttpRequest();
 
-      xhr.onload = () => {
-        setIsProcessing(false);
-        if (xhr.status === 200) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            setProcessedData(response);
-            toast({
-              title: "Processing complete!",
-              description: "Your image has been successfully converted to Excel format.",
-            });
-          } catch (error) {
-            console.error('Error parsing response:', error);
-            toast({
-              title: "Processing completed",
-              description: "File processed successfully.",
-            });
-            setProcessedData({
-              extractedText: "Data extracted from your image",
-              items: [
-                { description: "Item 1", amount: 25.99, category: "Category A" },
-                { description: "Item 2", amount: 15.50, category: "Category B" }
-              ],
-              total: 41.49,
-              merchant: "Extracted Store",
-              date: new Date().toISOString().split('T')[0]
-            });
-          }
-        } else {
-          toast({
-            title: "Processing failed",
-            description: `Server error: ${xhr.status}`,
-            variant: "destructive",
-          });
-        }
-      };
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        setUploadProgress((event.loaded / event.total) * 100);
+      }
+    };
 
-      xhr.onerror = () => {
-        setIsProcessing(false);
-        console.error('Upload failed');
+    xhr.onload = () => {
+      setIsProcessing(false);
+      console.log("COming Here");
+      console.log("UPLOD RESPONSE:", xhr.responseText);
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText);
+        console.log("UPLOD RESPONSEL:",data);
+        setProcessedData(data.receipts);
         toast({
-          title: "Upload failed",
-          description: "Failed to connect to the server. Please check if the backend is running on http://localhost:8000",
+          title: "Processing complete!",
+          description: "Your file has been processed successfully.",
+        });
+      } else {
+        toast({
+          title: "Processing failed",
+          description: `Server error: ${xhr.status}`,
           variant: "destructive",
         });
-      };
+      }
+    };
 
-      xhr.open('POST', 'http://localhost:8000/upload');
-      xhr.send(formData);
-
-    } catch (error) {
+    xhr.onerror = () => {
       setIsProcessing(false);
-      console.error('Error processing file:', error);
       toast({
         title: "Processing failed",
-        description: "An error occurred while processing the file.",
+        description: "An error occurred while uploading the file.",
         variant: "destructive",
       });
-    }
-  };
+    };
+
+    xhr.open("POST", "http://localhost:8000/upload");
+    xhr.send(formData);
+  } catch (error) {
+    setIsProcessing(false);
+    toast({
+      title: "Processing failed",
+      description: "An error occurred while processing the file.",
+      variant: "destructive",
+    });
+  }
+};
 
   const handleExport = (format: 'excel' | 'csv' | 'json') => {
     if (!processedData) return;
-    
+
     toast({
       title: `Exporting as ${format.toUpperCase()}`,
       description: `Your data is being exported in ${format.toUpperCase()} format.`,
     });
-    
-    console.log(`Exporting data as ${format}:`, processedData);
+
+    // Implement export logic as needed
+    if (format === "excel") {
+      window.open("http://localhost:8000/download", "_blank");
+    }
+      // Add CSV/JSON export logic if needed
+    if (format === "excel") {
+    window.open("http://localhost:8000/download", "_blank");
+    } else if (format === "csv") {
+    window.open("http://localhost:8000/export/csv", "_blank");
+    } else if (format === "json") {
+    window.open("http://localhost:8000/export/json", "_blank");
+  }
+    else {
+      toast({
+        title: "Export failed",
+        description: "Unsupported format selected.",
+        variant: "destructive",
+      });
+    }
   };
 
   return {
@@ -139,6 +137,6 @@ export const useFileUpload = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
-    handleExport
+    handleExport,
   };
 };

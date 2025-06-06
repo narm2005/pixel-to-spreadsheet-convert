@@ -1,4 +1,4 @@
-
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -19,7 +19,7 @@ const FileUploadSection = ({
   uploadProgress,
   onFileSelect,
   onDrop,
-  onProcessFile
+  onProcessFile,
 }: FileUploadSectionProps) => {
   return (
     <Card className="mb-8">
@@ -39,20 +39,17 @@ const FileUploadSection = ({
             <Image className="h-12 w-12 text-gray-400" />
             <FileText className="h-12 w-12 text-gray-400" />
           </div>
-          
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             Drop your image or PDF here
           </h3>
           <p className="text-gray-600 mb-4">
             Upload an image or PDF with table data to convert to Excel, CSV, or JSON
           </p>
-          
           <div className="text-sm text-gray-500 mb-4">
             <p><strong>Images:</strong> PNG, JPG, JPEG, GIF, BMP, WebP</p>
             <p><strong>Documents:</strong> PDF</p>
             <p>Works best with clear, high-contrast table images</p>
           </div>
-          
           <input
             type="file"
             accept="image/*,.pdf"
@@ -67,7 +64,6 @@ const FileUploadSection = ({
               Choose File
             </Button>
           </label>
-          
           {selectedFile && (
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-sm font-medium text-blue-900">
@@ -79,7 +75,6 @@ const FileUploadSection = ({
             </div>
           )}
         </div>
-        
         {selectedFile && (
           <div className="mt-6 space-y-4">
             {isProcessing && (
@@ -91,9 +86,8 @@ const FileUploadSection = ({
                 <Progress value={uploadProgress} className="w-full" />
               </div>
             )}
-            
             <div className="flex justify-center">
-              <Button 
+              <Button
                 onClick={onProcessFile}
                 disabled={isProcessing}
                 className="bg-green-600 hover:bg-green-700"
