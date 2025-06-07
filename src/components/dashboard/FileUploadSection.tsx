@@ -51,17 +51,19 @@ const FileUploadSection = ({
             <p>Works best with clear, high-contrast table images</p>
           </div>
           <input
-            type="file"
-            accept="image/*,.pdf"
-            onChange={onFileSelect}
-            className="hidden"
+           type="file"
+           accept="image/*,.pdf"
+           onChange={onFileSelect}
+           style={{ display: "none" }}
             id="file-upload"
-            disabled={isProcessing}
+           disabled={isProcessing}
           />
           <label htmlFor="file-upload">
-            <Button className="bg-blue-600 hover:bg-blue-700 cursor-pointer" disabled={isProcessing}>
-              <Upload className="h-4 w-4 mr-2" />
-              Choose File
+            <Button asChild className="bg-blue-600 hover:bg-blue-700 cursor-pointer" disabled={isProcessing}>
+              <span>
+                 <Upload className="h-4 w-4 mr-2" />
+                  Choose File
+               </span>
             </Button>
           </label>
           {selectedFile && (
