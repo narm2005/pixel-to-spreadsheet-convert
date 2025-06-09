@@ -1,20 +1,50 @@
-import React, { useEffect } from "react";
+
+import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
 import ProcessSteps from "./dashboard/ProcessSteps";
 import FileUploadSection from "./dashboard/FileUploadSection";
 import ResultsSection from "./dashboard/ResultsSection";
+import ProcessedFilesList from "./dashboard/ProcessedFilesList";
 import { useFileUpload } from "@/hooks/useFileUpload";
-  // Redirect if not authenticated
 import { jwtDecode } from "jwt-decode";
 
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Inside Dashboard component
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  // Mock data for processed files - replace with actual Supabase data
+  const [processedFiles, setProcessedFiles] = useState([
+    {
+      id: "1",
+      fileName: "receipt_2024_01.pdf",
+      uploadedAt: "2024-01-15T10:30:00Z",
+      status: "completed" as const,
+      merchant: "Walmart",
+      total: "45.67",
+      itemCount: 8
+    },
+    {
+      id: "2", 
+      fileName: "grocery_receipt.jpg",
+      uploadedAt: "2024-01-14T15:45:00Z",
+      status: "completed" as const,
+      merchant: "Target",
+      total: "23.45",
+      itemCount: 5
+    },
+    {
+      id: "3",
+      fileName: "restaurant_bill.pdf", 
+      uploadedAt: "2024-01-13T19:20:00Z",
+      status: "processing" as const,
+      merchant: "Pizza Hut",
+      total: undefined,
+      itemCount: undefined
+    }
+  ]);
 
   const {
     selectedFile,
@@ -66,22 +96,31 @@ useEffect(() => {
 }, [navigate, toast]);
 
   const handleSignOut = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  navigate("/");
-  toast({
-    title: "Signed out successfully",
-    description: "You have been logged out.",
-  });
-};
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+    toast({
+      title: "Signed out successfully",
+      description: "You have been logged out.",
+    });
+  };
+
+  const handleFileDownload = (fileId: string, format: 'excel' | 'csv' | 'json') => {
+    toast({
+      title: `Downloading ${format.toUpperCase()}`,
+      description: `File ${fileId} is being downloaded.`,
+    });
+    // TODO: Implement actual download logic with Supabase
+    console.log(`Downloading file ${fileId} as ${format}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-        <Navbar
-              isAuthenticated={true}
-              user={user}
-              onSignOut={handleSignOut}
-            />
+      <Navbar
+        isAuthenticated={true}
+        user={user}
+        onSignOut={handleSignOut}
+      />
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -107,6 +146,13 @@ useEffect(() => {
           processedData={processedData}
           onExport={handleExport}
         />
+
+        <div className="mt-8">
+          <ProcessedFilesList
+            files={processedFiles}
+            onDownload={handleFileDownload}
+          />
+        </div>
       </div>
     </div>
   );
