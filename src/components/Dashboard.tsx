@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
@@ -6,10 +6,15 @@ import ProcessSteps from "./dashboard/ProcessSteps";
 import FileUploadSection from "./dashboard/FileUploadSection";
 import ResultsSection from "./dashboard/ResultsSection";
 import { useFileUpload } from "@/hooks/useFileUpload";
+  // Redirect if not authenticated
+import { jwtDecode } from "jwt-decode";
 
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Inside Dashboard component
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const {
     selectedFile,
@@ -22,13 +27,53 @@ const Dashboard = () => {
     handleExport,
   } = useFileUpload();
 
-  const handleSignOut = () => {
-    navigate("/");
+
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) {
     toast({
-      title: "Signed out successfully",
-      description: "You have been logged out.",
+      title: "Authentication required",
+      description: "Please sign in with Google.",
+      variant: "destructive",
     });
-  };
+    navigate("/signin");
+    return;
+  }
+  try {
+    const decoded: any = jwtDecode(token);
+    if (decoded.exp * 1000 < Date.now()) {
+      // Token expired
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      toast({
+        title: "Session expired",
+        description: "Please sign in again.",
+        variant: "destructive",
+      });
+      navigate("/signin");
+    }
+  } catch {
+    // Invalid token
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    toast({
+      title: "Authentication error",
+      description: "Please sign in again.",
+      variant: "destructive",
+    });
+    navigate("/signin");
+  }
+}, [navigate, toast]);
+
+  const handleSignOut = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  navigate("/");
+  toast({
+    title: "Signed out successfully",
+    description: "You have been logged out.",
+  });
+};
 
   return (
     <div className="min-h-screen bg-gray-50">

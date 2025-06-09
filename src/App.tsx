@@ -9,6 +9,7 @@ import SignIn from "./components/SignIn";
 import Dashboard from "./components/Dashboard";
 import NotFound from "./pages/NotFound";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (

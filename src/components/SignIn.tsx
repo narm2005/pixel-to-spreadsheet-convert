@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +6,8 @@ import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
+import { GoogleLogin } from '@react-oauth/google'; // <-- Add this import
+import axios from "axios"; // <-- Add this import
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
@@ -19,8 +20,6 @@ const SignIn = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate authentication
     setTimeout(() => {
       if (email === "demo@example.com" && password === "password123") {
         toast({
@@ -39,6 +38,49 @@ const SignIn = () => {
     }, 1000);
   };
 
+  // Google SSO handler
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      // Send the credential to your backend for verification
+      const res = await axios.post("http://localhost:8000/auth/callback", {
+        credential: credentialResponse.credential,
+      });
+ if (res.data.success) {
+  localStorage.setItem("token", res.data.token); // Store JWT
+  localStorage.setItem("user", JSON.stringify({
+    name: res.data.name,
+    email: res.data.email,
+    picture: res.data.picture,
+  }));
+  toast({
+    title: "Google Sign-In Successful",
+    description: `Welcome, ${res.data.name || "user"}!`,
+  });
+  navigate("/dashboard");
+} else {
+        toast({
+          title: "Google Sign-In Failed",
+          description: "Unable to sign in with Google.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Google Sign-In Failed",
+        description: "Unable to sign in with Google.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleError = () => {
+    toast({
+      title: "Google Sign-In Failed",
+      description: "Unable to sign in with Google.",
+      variant: "destructive",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Navbar />
@@ -49,13 +91,23 @@ const SignIn = () => {
             <CardDescription>Sign in to access your data dashboard</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            {/* <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm font-medium text-blue-800 mb-1">Demo Credentials:</p>
               <p className="text-sm text-blue-600">Email: demo@example.com</p>
               <p className="text-sm text-blue-600">Password: password123</p>
+            </div> */}
+
+            {/* Google SSO Button */}
+            <div className="mb-4 flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                width="100%"
+              />
             </div>
-            
+
             <form onSubmit={handleSignIn} className="space-y-4">
+              {/* ...existing code... */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
@@ -72,7 +124,6 @@ const SignIn = () => {
                   />
                 </div>
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
@@ -100,7 +151,6 @@ const SignIn = () => {
                   </button>
                 </div>
               </div>
-              
               <Button 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700"
