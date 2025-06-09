@@ -4,9 +4,9 @@ import { Database, User, LogOut } from "lucide-react";
 
 interface NavbarProps {
   isAuthenticated?: boolean;
+  user?: { name?: string; picture?: string };
   onSignOut?: () => void;
 }
-
 // Helper to get initials from name or email
 function getInitials(user: { name?: string; email?: string }) {
   if (user.name) {
@@ -18,18 +18,8 @@ function getInitials(user: { name?: string; email?: string }) {
   return "U";
 }
 
-const Navbar = ({ isAuthenticated = false, onSignOut }: NavbarProps) => {
+const Navbar = ({ isAuthenticated = false, user = {}, onSignOut }: NavbarProps) => {
   const location = useLocation();
-
-  // Get user info from localStorage if authenticated
-  let user: { name?: string; picture?: string } = {};
-  if (isAuthenticated) {
-    try {
-      user = JSON.parse(localStorage.getItem("user") || "{}");
-    } catch {
-      user = {};
-    }
-  }
 
   return (
     <nav className="bg-white border-b border-gray-200 px-6 py-4">
@@ -43,7 +33,7 @@ const Navbar = ({ isAuthenticated = false, onSignOut }: NavbarProps) => {
           <div className="hidden md:flex items-center space-x-8">
             <a href="#features" className="text-gray-600 hover:text-gray-900">Features</a>
             <a href="#how-it-works" className="text-gray-600 hover:text-gray-900">How It Works</a>
-            <span className="text-gray-600">Pricing</span>
+            <Link to="/pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link>
             <span className="text-gray-600">Testimonials</span>
             <span className="text-gray-600">Contact</span>
           </div>
@@ -66,7 +56,11 @@ const Navbar = ({ isAuthenticated = false, onSignOut }: NavbarProps) => {
                 )}
                 <span>{user.name || "User"}</span>
               </div>
-              <Button variant="outline" onClick={onSignOut} className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                onClick={onSignOut}
+                className="flex items-center space-x-2"
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Sign Out</span>
               </Button>

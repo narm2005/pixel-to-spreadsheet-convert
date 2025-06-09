@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import SignIn from "./components/SignIn";
 import Dashboard from "./components/Dashboard";
 import NotFound from "./pages/NotFound";
+import Pricing from "./pages/Pricing";
 
 
 const queryClient = new QueryClient();
@@ -20,6 +21,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/pricing" element={<Pricing />} />
+
           <Route path="/signin" element={<SignIn />} />
           <Route path="/dashboard" element={<Dashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

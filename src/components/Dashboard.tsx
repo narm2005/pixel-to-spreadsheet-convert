@@ -77,8 +77,11 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar isAuthenticated={true} onSignOut={handleSignOut} />
-
+        <Navbar
+              isAuthenticated={true}
+              user={user}
+              onSignOut={handleSignOut}
+            />
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
