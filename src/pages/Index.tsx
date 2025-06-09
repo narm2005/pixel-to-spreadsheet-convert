@@ -93,7 +93,7 @@ const Index = () => {
               </CardContent>
             </Card>
             
-            <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
+            {/* <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="pt-8 pb-6">
                 <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Smartphone className="h-8 w-8 text-orange-600" />
@@ -127,7 +127,7 @@ const Index = () => {
                   Visualize spending patterns and generate expense reports automatically.
                 </p>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </section>
