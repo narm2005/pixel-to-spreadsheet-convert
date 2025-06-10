@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,7 +109,7 @@ export const useSecureFileUpload = () => {
 
       setUploadProgress(50); // Manual progress update
 
-      // Create database record
+      // Create database record - the trigger will automatically set expiration
       const { data: fileRecord, error: dbError } = await supabase
         .from('processed_files')
         .insert({

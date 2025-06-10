@@ -9,9 +9,40 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cleanup_jobs: {
+        Row: {
+          error_message: string | null
+          executed_at: string
+          files_deleted: number | null
+          id: string
+          job_type: string
+          status: string
+          storage_cleaned: number | null
+        }
+        Insert: {
+          error_message?: string | null
+          executed_at?: string
+          files_deleted?: number | null
+          id?: string
+          job_type: string
+          status?: string
+          storage_cleaned?: number | null
+        }
+        Update: {
+          error_message?: string | null
+          executed_at?: string
+          files_deleted?: number | null
+          id?: string
+          job_type?: string
+          status?: string
+          storage_cleaned?: number | null
+        }
+        Relationships: []
+      }
       processed_files: {
         Row: {
           created_at: string
+          expires_at: string | null
           file_name: string
           file_size: number | null
           id: string
@@ -26,6 +57,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
           file_name: string
           file_size?: number | null
           id?: string
@@ -40,6 +72,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
           file_name?: string
           file_size?: number | null
           id?: string
@@ -62,6 +95,7 @@ export type Database = {
           name: string | null
           picture: string | null
           updated_at: string
+          user_tier: string | null
         }
         Insert: {
           created_at?: string
@@ -70,6 +104,7 @@ export type Database = {
           name?: string | null
           picture?: string | null
           updated_at?: string
+          user_tier?: string | null
         }
         Update: {
           created_at?: string
@@ -78,6 +113,7 @@ export type Database = {
           name?: string | null
           picture?: string | null
           updated_at?: string
+          user_tier?: string | null
         }
         Relationships: []
       }

@@ -10,12 +10,15 @@ import ProcessedFilesList from "./dashboard/ProcessedFilesList";
 import { useSecureFileUpload } from "@/hooks/useSecureFileUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { Clock, Crown } from "lucide-react";
 
 const SecureDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, signOut, loading } = useAuth();
   const [processedFiles, setProcessedFiles] = useState([]);
+  const [userTier, setUserTier] = useState<'freemium' | 'premium'>('freemium');
 
   const {
     selectedFile,
@@ -35,9 +38,27 @@ const SecureDashboard = () => {
     }
 
     if (user) {
+      fetchUserProfile();
       fetchProcessedFiles();
     }
   }, [user, loading, navigate]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_tier')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setUserTier(data?.user_tier || 'freemium');
+    } catch (error: any) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchProcessedFiles = async () => {
     if (!user) return;
@@ -53,12 +74,15 @@ const SecureDashboard = () => {
 
       const formattedFiles = data?.map(file => ({
         id: file.id,
-        fileName: file.original_file_name,
+        fileName: file.file_name,
+        originalFileName: file.original_file_name,
         uploadedAt: file.created_at,
         status: file.status as 'processing' | 'completed' | 'failed',
         merchant: file.merchant,
         total: file.total?.toString(),
-        itemCount: file.item_count
+        itemCount: file.item_count,
+        expiresAt: file.expires_at,
+        processedData: file.processed_data
       })) || [];
 
       setProcessedFiles(formattedFiles);
@@ -108,6 +132,13 @@ const SecureDashboard = () => {
     }
   };
 
+  // Refresh files after processing
+  useEffect(() => {
+    if (processedData) {
+      fetchProcessedFiles();
+    }
+  }, [processedData]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -135,12 +166,26 @@ const SecureDashboard = () => {
       />
       <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Convert Images & PDFs to Excel, CSV, or JSON
-          </h1>
-          <p className="text-gray-600">
-            Securely upload your images or PDF files with table data and convert them to structured data formats.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Convert Images & PDFs to Excel, CSV, or JSON
+              </h1>
+              <p className="text-gray-600">
+                Securely upload your images or PDF files with table data and convert them to structured data formats.
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Badge variant={userTier === 'premium' ? 'default' : 'secondary'} className="flex items-center gap-1">
+                {userTier === 'premium' ? (
+                  <Crown className="h-3 w-3" />
+                ) : (
+                  <Clock className="h-3 w-3" />
+                )}
+                {userTier === 'premium' ? 'Premium' : 'Freemium (30-day expiry)'}
+              </Badge>
+            </div>
+          </div>
         </div>
 
         <ProcessSteps />
