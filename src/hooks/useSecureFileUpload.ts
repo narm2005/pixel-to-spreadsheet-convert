@@ -50,11 +50,34 @@ export const useSecureFileUpload = () => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
     if (file) {
-      // Create a synthetic event to reuse validation logic
-      const syntheticEvent = {
-        target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(syntheticEvent);
+      // Validate file directly instead of creating synthetic event
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image (PNG, JPG, JPEG, GIF, BMP, WebP) or PDF file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedFile(file);
+      setProcessedData(null);
+      toast({
+        title: "File selected",
+        description: `Selected: ${file.name}`,
+      });
     }
   };
 
@@ -76,17 +99,16 @@ export const useSecureFileUpload = () => {
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
+      // Upload without onUploadProgress callback since it's not supported
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('receipts')
-        .upload(fileName, selectedFile, {
-          onUploadProgress: (progress) => {
-            setUploadProgress((progress.loaded / progress.total) * 50); // First 50% for upload
-          }
-        });
+        .upload(fileName, selectedFile);
 
       if (uploadError) {
         throw uploadError;
       }
+
+      setUploadProgress(50); // Manual progress update
 
       // Create database record
       const { data: fileRecord, error: dbError } = await supabase
