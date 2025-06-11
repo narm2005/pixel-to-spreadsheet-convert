@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
@@ -54,9 +53,17 @@ const SecureDashboard = () => {
         .single();
 
       if (error) throw error;
-      setUserTier(data?.user_tier || 'freemium');
+      
+      // Ensure we set a valid tier value
+      const tier = data?.user_tier;
+      if (tier === 'premium' || tier === 'freemium') {
+        setUserTier(tier);
+      } else {
+        setUserTier('freemium'); // Default fallback
+      }
     } catch (error: any) {
       console.error('Error fetching user profile:', error);
+      setUserTier('freemium'); // Default fallback on error
     }
   };
 

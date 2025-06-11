@@ -8,14 +8,16 @@ ALTER TABLE public.processed_files ADD COLUMN expires_at TIMESTAMP WITH TIME ZON
 -- Create function to set expiration date based on user tier
 CREATE OR REPLACE FUNCTION public.set_file_expiration()
 RETURNS TRIGGER AS $$
+DECLARE
+  user_tier_value TEXT;
 BEGIN
   -- Get user tier
-  SELECT user_tier INTO NEW.expires_at
+  SELECT user_tier INTO user_tier_value
   FROM public.profiles 
   WHERE id = NEW.user_id;
   
   -- Set expiration based on tier (30 days for freemium, null for premium)
-  IF NEW.expires_at = 'freemium' OR NEW.expires_at IS NULL THEN
+  IF user_tier_value = 'freemium' OR user_tier_value IS NULL THEN
     NEW.expires_at := NEW.created_at + INTERVAL '30 days';
   ELSE
     NEW.expires_at := NULL; -- Premium users have no expiration
