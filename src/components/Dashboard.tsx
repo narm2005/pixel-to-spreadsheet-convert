@@ -20,6 +20,7 @@ const Dashboard = () => {
     {
       id: "1",
       fileName: "receipt_2024_01.pdf",
+      originalFileName: "receipt_2024_01.pdf",
       uploadedAt: "2024-01-15T10:30:00Z",
       status: "completed" as const,
       merchant: "Walmart",
@@ -29,6 +30,7 @@ const Dashboard = () => {
     {
       id: "2", 
       fileName: "grocery_receipt.jpg",
+      originalFileName: "grocery_receipt.jpg",
       uploadedAt: "2024-01-14T15:45:00Z",
       status: "completed" as const,
       merchant: "Target",
@@ -37,7 +39,8 @@ const Dashboard = () => {
     },
     {
       id: "3",
-      fileName: "restaurant_bill.pdf", 
+      fileName: "restaurant_bill.pdf",
+      originalFileName: "restaurant_bill.pdf", 
       uploadedAt: "2024-01-13T19:20:00Z",
       status: "processing" as const,
       merchant: "Pizza Hut",
@@ -57,43 +60,42 @@ const Dashboard = () => {
     handleExport,
   } = useFileUpload();
 
-
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    toast({
-      title: "Authentication required",
-      description: "Please sign in with Google.",
-      variant: "destructive",
-    });
-    navigate("/signin");
-    return;
-  }
-  try {
-    const decoded: any = jwtDecode(token);
-    if (decoded.exp * 1000 < Date.now()) {
-      // Token expired
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in with Google.",
+        variant: "destructive",
+      });
+      navigate("/signin");
+      return;
+    }
+    try {
+      const decoded: any = jwtDecode(token);
+      if (decoded.exp * 1000 < Date.now()) {
+        // Token expired
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        toast({
+          title: "Session expired",
+          description: "Please sign in again.",
+          variant: "destructive",
+        });
+        navigate("/signin");
+      }
+    } catch {
+      // Invalid token
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       toast({
-        title: "Session expired",
+        title: "Authentication error",
         description: "Please sign in again.",
         variant: "destructive",
       });
       navigate("/signin");
     }
-  } catch {
-    // Invalid token
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    toast({
-      title: "Authentication error",
-      description: "Please sign in again.",
-      variant: "destructive",
-    });
-    navigate("/signin");
-  }
-}, [navigate, toast]);
+  }, [navigate, toast]);
 
   const handleSignOut = () => {
     localStorage.removeItem("token");
