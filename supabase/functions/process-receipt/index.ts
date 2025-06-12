@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { fileId, fileName } = await req.json()
+    const { fileIds, fileNames } = await req.json()
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization')!
@@ -30,51 +30,141 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    // Download file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('receipts')
-      .download(fileName)
+    // Check if user can upload these files (pricing logic)
+    const fileCount = Array.isArray(fileIds) ? fileIds.length : 1
+    const { data: canUpload, error: checkError } = await supabase.rpc('can_user_upload', {
+      user_uuid: user.id,
+      new_file_count: fileCount
+    })
 
-    if (downloadError) {
-      throw downloadError
+    if (checkError) {
+      console.error('Error checking upload permission:', checkError)
+      throw new Error('Failed to check upload permission')
     }
 
-    // Convert file to base64 for processing
-    const arrayBuffer = await fileData.arrayBuffer()
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
-
-    // Mock processing - in production, you would integrate with OCR/AI services
-    // This simulates the receipt processing without exposing external API keys
-    const mockProcessedData = [{
-      merchant: "Sample Store",
-      date: new Date().toISOString().split('T')[0],
-      total: "25.99",
-      items: [
-        { description: "Sample Item 1", amount: "15.99", category: "Food" },
-        { description: "Sample Item 2", amount: "10.00", category: "Beverage" }
-      ]
-    }]
-
-    // Update the database record
-    const { error: updateError } = await supabase
-      .from('processed_files')
-      .update({
-        status: 'completed',
-        merchant: mockProcessedData[0].merchant,
-        total: parseFloat(mockProcessedData[0].total),
-        item_count: mockProcessedData[0].items.length,
-        processed_data: mockProcessedData,
-        updated_at: new Date().toISOString()
+    if (!canUpload) {
+      // Get current file count for better error message
+      const { data: currentCount } = await supabase.rpc('get_user_file_count', {
+        user_uuid: user.id
       })
-      .eq('id', fileId)
-      .eq('user_id', user.id)
 
-    if (updateError) {
-      throw updateError
+      return new Response(
+        JSON.stringify({ 
+          error: 'USAGE_LIMIT_EXCEEDED',
+          message: `You have reached the limit of your free plan. Current usage: ${currentCount}/10 files. Please upgrade to continue processing files.`,
+          upgradeUrl: '/pricing'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        },
+      )
     }
+
+    // Process files (handle both single file and bulk upload)
+    const processedResults = []
+    const fileIdsArray = Array.isArray(fileIds) ? fileIds : [fileIds]
+    const fileNamesArray = Array.isArray(fileNames) ? fileNames : [fileNames]
+
+    for (let i = 0; i < fileIdsArray.length; i++) {
+      const fileId = fileIdsArray[i]
+      const fileName = fileNamesArray[i]
+
+      console.log(`Processing file ${i + 1}/${fileIdsArray.length}: ${fileName}`)
+
+      // Download file from storage
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('receipts')
+        .download(fileName)
+
+      if (downloadError) {
+        console.error(`Error downloading file ${fileName}:`, downloadError)
+        throw new Error(`Failed to download file: ${fileName}`)
+      }
+
+      // Convert file to base64 for processing
+      const arrayBuffer = await fileData.arrayBuffer()
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+
+      // Mock processing - in production, you would integrate with OCR/AI services
+      const mockProcessedData = {
+        fileId: fileId,
+        fileName: fileName,
+        merchant: `Store ${i + 1}`,
+        date: new Date().toISOString().split('T')[0],
+        total: (Math.random() * 100 + 10).toFixed(2),
+        items: [
+          { description: `Item ${i + 1}-1`, amount: (Math.random() * 50 + 5).toFixed(2), category: "Food" },
+          { description: `Item ${i + 1}-2`, amount: (Math.random() * 30 + 5).toFixed(2), category: "Beverage" },
+          { description: `Item ${i + 1}-3`, amount: (Math.random() * 20 + 5).toFixed(2), category: "Misc" }
+        ]
+      }
+
+      processedResults.push(mockProcessedData)
+
+      // Update the database record
+      const { error: updateError } = await supabase
+        .from('processed_files')
+        .update({
+          status: 'completed',
+          merchant: mockProcessedData.merchant,
+          total: parseFloat(mockProcessedData.total),
+          item_count: mockProcessedData.items.length,
+          processed_data: mockProcessedData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', fileId)
+        .eq('user_id', user.id)
+
+      if (updateError) {
+        console.error(`Error updating file record ${fileId}:`, updateError)
+        throw new Error(`Failed to update file record: ${fileId}`)
+      }
+    }
+
+    // Log the upload count
+    const { error: logError } = await supabase
+      .from('upload_logs')
+      .insert({
+        user_id: user.id,
+        file_count: fileCount
+      })
+
+    if (logError) {
+      console.error('Error logging upload:', logError)
+      // Don't throw here, just log the error
+    }
+
+    // Create merged output data
+    const mergedData = {
+      summary: {
+        totalFiles: processedResults.length,
+        totalAmount: processedResults.reduce((sum, result) => sum + parseFloat(result.total), 0).toFixed(2),
+        totalItems: processedResults.reduce((sum, result) => sum + result.items.length, 0),
+        processedAt: new Date().toISOString()
+      },
+      receipts: processedResults,
+      combinedItems: processedResults.flatMap((result, receiptIndex) => 
+        result.items.map(item => ({
+          receiptNumber: receiptIndex + 1,
+          merchant: result.merchant,
+          date: result.date,
+          description: item.description,
+          amount: item.amount,
+          category: item.category,
+          fileName: result.fileName
+        }))
+      )
+    }
+
+    console.log(`Successfully processed ${fileCount} files for user ${user.id}`)
 
     return new Response(
-      JSON.stringify({ receipts: mockProcessedData }),
+      JSON.stringify({ 
+        receipts: processedResults,
+        mergedData: mergedData,
+        summary: mergedData.summary
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

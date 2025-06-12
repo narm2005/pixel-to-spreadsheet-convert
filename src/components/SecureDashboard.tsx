@@ -21,9 +21,11 @@ const SecureDashboard = () => {
 
   const {
     selectedFile,
+    selectedFiles,
     isProcessing,
     uploadProgress,
     processedData,
+    mergedData,
     handleFileSelect,
     handleDrop,
     handleProcessFile,
@@ -54,16 +56,15 @@ const SecureDashboard = () => {
 
       if (error) throw error;
       
-      // Ensure we set a valid tier value
       const tier = data?.user_tier;
       if (tier === 'premium' || tier === 'freemium') {
         setUserTier(tier);
       } else {
-        setUserTier('freemium'); // Default fallback
+        setUserTier('freemium');
       }
     } catch (error: any) {
       console.error('Error fetching user profile:', error);
-      setUserTier('freemium'); // Default fallback on error
+      setUserTier('freemium');
     }
   };
 
@@ -139,7 +140,6 @@ const SecureDashboard = () => {
     }
   };
 
-  // Refresh files after processing
   useEffect(() => {
     if (processedData) {
       fetchProcessedFiles();
@@ -179,7 +179,8 @@ const SecureDashboard = () => {
                 Convert Images & PDFs to Excel, CSV, or JSON
               </h1>
               <p className="text-gray-600">
-                Securely upload your images or PDF files with table data and convert them to structured data formats.
+                Securely upload your images or PDF files with table data and convert them to structured data formats. 
+                {userTier === 'freemium' && <span className="font-medium"> Free tier: 10 files total.</span>}
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -199,6 +200,7 @@ const SecureDashboard = () => {
 
         <FileUploadSection
           selectedFile={selectedFile}
+          selectedFiles={selectedFiles}
           isProcessing={isProcessing}
           uploadProgress={uploadProgress}
           onFileSelect={handleFileSelect}
@@ -208,6 +210,7 @@ const SecureDashboard = () => {
 
         <ResultsSection
           processedData={processedData}
+          mergedData={mergedData}
           onExport={handleExport}
         />
 

@@ -1,87 +1,78 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 export const useSecureFileUpload = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processedData, setProcessedData] = useState<any>(null);
+  const [mergedData, setMergedData] = useState<any>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
+  // Backward compatibility for single file
+  const selectedFile = selectedFiles.length > 0 ? selectedFiles[0] : null;
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type and size
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
-      const maxSize = 10 * 1024 * 1024; // 10MB
-
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image (PNG, JPG, JPEG, GIF, BMP, WebP) or PDF file.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large",
-          description: "Please select a file smaller than 10MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setSelectedFile(file);
-      setProcessedData(null);
-      toast({
-        title: "File selected",
-        description: `Selected: ${file.name}`,
-      });
-    }
+    const files = Array.from(event.target.files || []);
+    handleFilesValidation(files);
   };
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (file) {
-      // Validate file directly instead of creating synthetic event
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
-      const maxSize = 10 * 1024 * 1024; // 10MB
+    const files = Array.from(event.dataTransfer.files || []);
+    handleFilesValidation(files);
+  };
 
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image (PNG, JPG, JPEG, GIF, BMP, WebP) or PDF file.",
-          variant: "destructive",
-        });
-        return;
-      }
+  const handleFilesValidation = (files: File[]) => {
+    if (files.length === 0) return;
 
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large",
-          description: "Please select a file smaller than 10MB.",
-          variant: "destructive",
-        });
-        return;
-      }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxFiles = 10; // Maximum files per upload
 
-      setSelectedFile(file);
-      setProcessedData(null);
+    if (files.length > maxFiles) {
       toast({
-        title: "File selected",
-        description: `Selected: ${file.name}`,
+        title: "Too many files",
+        description: `Please select no more than ${maxFiles} files at once.`,
+        variant: "destructive",
       });
+      return;
     }
+
+    const invalidFiles = files.filter(file => 
+      !allowedTypes.includes(file.type) || file.size > maxSize
+    );
+
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid files",
+        description: `${invalidFiles.length} file(s) are invalid. Please ensure all files are images (PNG, JPG, JPEG, GIF, BMP, WebP) or PDF files under 10MB.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedFiles(files);
+    setProcessedData(null);
+    setMergedData(null);
+    
+    const fileNames = files.map(f => f.name).join(", ");
+    const displayText = files.length === 1 
+      ? `Selected: ${files[0].name}`
+      : `Selected ${files.length} files: ${fileNames.length > 100 ? fileNames.substring(0, 100) + "..." : fileNames}`;
+    
+    toast({
+      title: "Files selected",
+      description: displayText,
+    });
   };
 
   const handleProcessFile = async () => {
-    if (!selectedFile || !user) {
+    if (selectedFiles.length === 0 || !user) {
       toast({
         title: "Authentication required",
         description: "Please sign in to process files.",
@@ -94,88 +85,88 @@ export const useSecureFileUpload = () => {
     setUploadProgress(0);
 
     try {
-      // Upload file to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      
-      // Upload without onUploadProgress callback since it's not supported
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('receipts')
-        .upload(fileName, selectedFile);
+      const fileIds = [];
+      const fileNames = [];
 
-      if (uploadError) {
-        throw uploadError;
+      // Upload all files first
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}-${i}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('receipts')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Create database record
+        const { data: fileRecord, error: dbError } = await supabase
+          .from('processed_files')
+          .insert({
+            user_id: user.id,
+            file_name: fileName,
+            original_file_name: file.name,
+            file_size: file.size,
+            status: 'processing'
+          })
+          .select('*')
+          .single();
+
+        if (dbError || !fileRecord) {
+          throw new Error(`Failed to create file record for ${file.name}`);
+        }
+
+        fileIds.push(fileRecord.id);
+        fileNames.push(fileName);
+
+        // Update progress
+        setUploadProgress(((i + 1) / selectedFiles.length) * 50);
       }
 
-      setUploadProgress(50); // Manual progress update
-      console.log('File uploaded:', uploadData);
-      toast({
-        title: "File uploaded",
-        description: `File uploaded successfully to supabase: ${fileName}`,
-      });
-      console.log('File upload data:', uploadData);
-      // Create database record - the trigger will automatically set expiration
-      const { data: fileRecord, error: dbError } = await supabase
-        .from('processed_files')
-        .insert({
-          user_id: user.id,
-          file_name: fileName,
-          original_file_name: selectedFile.name,
-          file_size: selectedFile.size,
-          status: 'processing'
-        })
-        .select('*')
-        .single();
-      if (dbError) {
-        console.error("Supabase DB error:", dbError);
-        throw dbError;
-      }
-      if (!fileRecord) {
-        console.error("Supabase insert returned no record:", fileRecord);
-        throw new Error("Failed to create file record in database.");
-      }
-      console.log('File record created:', fileRecord);
-      const { data: fileUrl, error: urlError } = supabase.storage
-        .from('receipts')
-        .getPublicUrl(fileName);
-      if (urlError) {
-        console.error("Supabase URL error:", urlError);
-        throw urlError;
-      }
-      console.log('File public URL:', fileUrl);
-      toast({
-        title: "File ready for processing",
-        description: `File is ready for processing: ${fileUrl.publicUrl}`,
-      });
+      console.log('All files uploaded, starting processing...');
+      setUploadProgress(60);
 
-      setUploadProgress(75);
-
-      // Call Edge Function for processing
+      // Call Edge Function for processing (bulk)
       const { data: functionData, error: functionError } = await supabase.functions
         .invoke('process-receipt', {
           body: { 
-            fileId: fileRecord.id,
-            fileName: fileName 
+            fileIds: fileIds,
+            fileNames: fileNames
           }
         });
 
       if (functionError) {
+        // Check if it's a usage limit error
+        if (functionError.message?.includes('USAGE_LIMIT_EXCEEDED')) {
+          const errorData = JSON.parse(functionError.message);
+          toast({
+            title: "Usage Limit Reached",
+            description: errorData.message,
+            variant: "destructive",
+          });
+          return;
+        }
         throw functionError;
       }
 
       setUploadProgress(100);
       setProcessedData(functionData.receipts);
+      setMergedData(functionData.mergedData);
       
+      const fileText = selectedFiles.length === 1 ? "file" : "files";
       toast({
         title: "Processing complete!",
-        description: "Your file has been processed successfully.",
+        description: `Your ${selectedFiles.length} ${fileText} have been processed successfully.`,
       });
 
     } catch (error: any) {
       console.error('File processing error:', error);
       toast({
         title: "Processing failed",
-        description: error.message || "An error occurred while processing the file.",
+        description: error.message || "An error occurred while processing the files.",
         variant: "destructive",
       });
     } finally {
@@ -184,13 +175,13 @@ export const useSecureFileUpload = () => {
   };
 
   const handleExport = async (format: 'excel' | 'csv' | 'json') => {
-    if (!processedData || !user) return;
+    if (!mergedData || !user) return;
 
     try {
       const { data, error } = await supabase.functions
-        .invoke('export-data', {
+        .invoke('export-merged-data', {
           body: { 
-            data: processedData,
+            mergedData: mergedData,
             format,
             userId: user.id
           }
@@ -213,7 +204,7 @@ export const useSecureFileUpload = () => {
 
       toast({
         title: `Exported as ${format.toUpperCase()}`,
-        description: `Your data has been exported successfully.`,
+        description: `Your merged data has been exported successfully.`,
       });
     } catch (error: any) {
       toast({
@@ -225,10 +216,12 @@ export const useSecureFileUpload = () => {
   };
 
   return {
-    selectedFile,
+    selectedFile, // For backward compatibility
+    selectedFiles,
     isProcessing,
     uploadProgress,
     processedData,
+    mergedData,
     handleFileSelect,
     handleDrop,
     handleProcessFile,

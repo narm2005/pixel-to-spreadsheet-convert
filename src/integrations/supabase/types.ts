@@ -117,6 +117,30 @@ export type Database = {
         }
         Relationships: []
       }
+      upload_logs: {
+        Row: {
+          created_at: string
+          file_count: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_count?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_count?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       UserAccounts: {
         Row: {
           created_at: string
@@ -137,7 +161,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_user_upload: {
+        Args: { user_uuid: string; new_file_count: number }
+        Returns: boolean
+      }
+      get_user_file_count: {
+        Args: { user_uuid: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
