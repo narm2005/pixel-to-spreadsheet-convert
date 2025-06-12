@@ -108,7 +108,12 @@ export const useSecureFileUpload = () => {
       }
 
       setUploadProgress(50); // Manual progress update
-
+      console.log('File uploaded:', uploadData);
+      toast({
+        title: "File uploaded",
+        description: `File uploaded successfully to supabase: ${fileName}`,
+      });
+      console.log('File upload data:', uploadData);
       // Create database record - the trigger will automatically set expiration
       const { data: fileRecord, error: dbError } = await supabase
         .from('processed_files')
@@ -119,12 +124,29 @@ export const useSecureFileUpload = () => {
           file_size: selectedFile.size,
           status: 'processing'
         })
-        .select()
+        .select('*')
         .single();
-
       if (dbError) {
+        console.error("Supabase DB error:", dbError);
         throw dbError;
       }
+      if (!fileRecord) {
+        console.error("Supabase insert returned no record:", fileRecord);
+        throw new Error("Failed to create file record in database.");
+      }
+      console.log('File record created:', fileRecord);
+      const { data: fileUrl, error: urlError } = supabase.storage
+        .from('receipts')
+        .getPublicUrl(fileName);
+      if (urlError) {
+        console.error("Supabase URL error:", urlError);
+        throw urlError;
+      }
+      console.log('File public URL:', fileUrl);
+      toast({
+        title: "File ready for processing",
+        description: `File is ready for processing: ${fileUrl.publicUrl}`,
+      });
 
       setUploadProgress(75);
 
