@@ -1,12 +1,10 @@
 
-import React, { useState } from "react";
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Calendar, DollarSign, Eye, Clock, AlertTriangle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import FileViewerModal from "./FileViewerModal";
+import { FileText, Download, Calendar, DollarSign, Package, AlertCircle } from "lucide-react";
+import { format } from "date-fns";
 
 interface ProcessedFile {
   id: string;
@@ -18,57 +16,58 @@ interface ProcessedFile {
   total?: string;
   itemCount?: number;
   expiresAt?: string;
-  processedData?: any;
+  category?: string;
+  confidenceScore?: number;
 }
 
 interface ProcessedFilesListProps {
   files: ProcessedFile[];
-  onDownload: (fileId: string, format: 'excel' | 'csv' | 'json') => void;
+  onDownload: (fileId: string, format: 'excel' | 'csv' | 'json') => Promise<void>;
+  userTier: 'freemium' | 'premium';
 }
 
-const ProcessedFilesList = ({ files, onDownload }: ProcessedFilesListProps) => {
-  const [selectedFile, setSelectedFile] = useState<ProcessedFile | null>(null);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
-
-  const openFileViewer = (file: ProcessedFile) => {
-    setSelectedFile(file);
-    setIsViewerOpen(true);
-  };
-
-  const closeFileViewer = () => {
-    setSelectedFile(null);
-    setIsViewerOpen(false);
-  };
-
-  const getExpirationStatus = (expiresAt?: string) => {
-    if (!expiresAt) return null;
-    
-    const expirationDate = new Date(expiresAt);
-    const now = new Date();
-    const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    
-    if (expirationDate < now) {
-      return { type: 'expired', icon: AlertTriangle, color: 'text-red-600' };
-    } else if (expirationDate < sevenDaysFromNow) {
-      return { type: 'expiring', icon: Clock, color: 'text-yellow-600' };
+const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({ 
+  files, 
+  onDownload,
+  userTier 
+}) => {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'processing': return 'bg-yellow-100 text-yellow-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    return null;
+  };
+
+  const getExportOptions = () => {
+    if (userTier === 'premium') {
+      return [
+        { format: 'excel' as const, label: 'Excel (.xlsx)' },
+        { format: 'csv' as const, label: 'CSV' },
+        { format: 'json' as const, label: 'JSON' }
+      ];
+    }
+    return [{ format: 'csv' as const, label: 'CSV' }];
   };
 
   if (files.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Your Processed Files</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Your Processed Files
+          </CardTitle>
           <CardDescription>
-            Files you've uploaded and processed will appear here.
+            Files you've uploaded and processed will appear here
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No files processed yet</p>
-            <p className="text-sm text-gray-400">Upload a file above to get started</p>
+          <div className="text-center py-8 text-gray-500">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No files processed yet</p>
+            <p className="text-sm">Upload your first receipt or document to get started</p>
           </div>
         </CardContent>
       </Card>
@@ -76,150 +75,95 @@ const ProcessedFilesList = ({ files, onDownload }: ProcessedFilesListProps) => {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Processed Files</CardTitle>
-          <CardDescription>
-            View and download your processed receipt data. Freemium files expire after 30 days.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>File Name</TableHead>
-                <TableHead>Merchant</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Uploaded</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Expiration</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {files.map((file) => {
-                const expirationStatus = getExpirationStatus(file.expiresAt);
-                const isExpired = file.expiresAt && new Date(file.expiresAt) < new Date();
-                
-                return (
-                  <TableRow key={file.id} className={isExpired ? 'opacity-60' : ''}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center space-x-2">
-                        <FileText className="h-4 w-4 text-gray-400" />
-                        <span>{file.originalFileName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{file.merchant || '-'}</TableCell>
-                    <TableCell>
-                      {file.total ? (
-                        <div className="flex items-center space-x-1">
-                          <DollarSign className="h-3 w-3" />
-                          <span>{file.total}</span>
-                        </div>
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell>{file.itemCount || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 text-sm text-gray-500">
-                        <Calendar className="h-3 w-3" />
-                        <span>{formatDistanceToNow(new Date(file.uploadedAt), { addSuffix: true })}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        file.status === 'completed' 
-                          ? 'default'
-                          : file.status === 'processing'
-                          ? 'secondary'
-                          : 'destructive'
-                      }>
-                        {file.status}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Your Processed Files ({files.length})
+        </CardTitle>
+        <CardDescription>
+          Download and manage your processed documents
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {files.map((file) => (
+            <div key={file.id} className="border rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-medium truncate">{file.originalFileName}</h3>
+                    <Badge className={getStatusColor(file.status)}>
+                      {file.status}
+                    </Badge>
+                    {file.category && (
+                      <Badge variant="outline" className="text-xs">
+                        {file.category}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {file.expiresAt ? (
-                        <div className="flex items-center space-x-1">
-                          {expirationStatus && (
-                            <expirationStatus.icon className={`h-3 w-3 ${expirationStatus.color}`} />
-                          )}
-                          <span className={`text-xs ${expirationStatus?.color || 'text-gray-500'}`}>
-                            {isExpired 
-                              ? 'Expired'
-                              : formatDistanceToNow(new Date(file.expiresAt), { addSuffix: true })
-                            }
-                          </span>
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          No expiry
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openFileViewer(file)}
-                          className="h-8 px-2"
-                          disabled={isExpired}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                        {file.status === 'completed' && !isExpired && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onDownload(file.id, 'excel')}
-                              className="h-8 px-2"
-                            >
-                              <Download className="h-3 w-3 mr-1" />
-                              Excel
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onDownload(file.id, 'csv')}
-                              className="h-8 px-2"
-                            >
-                              <Download className="h-3 w-3 mr-1" />
-                              CSV
-                            </Button>
-                          </>
-                        )}
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600 mb-3">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {format(new Date(file.uploadedAt), 'MMM d, yyyy')}
+                    </div>
+                    {file.merchant && (
+                      <div className="flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {file.merchant}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    )}
+                    {file.total && (
+                      <div className="flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" />
+                        ${file.total}
+                      </div>
+                    )}
+                    {file.itemCount && (
+                      <div className="flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {file.itemCount} items
+                      </div>
+                    )}
+                  </div>
 
-      {selectedFile && (
-        <FileViewerModal
-          isOpen={isViewerOpen}
-          onClose={closeFileViewer}
-          file={{
-            id: selectedFile.id,
-            fileName: selectedFile.fileName,
-            originalFileName: selectedFile.originalFileName,
-            status: selectedFile.status,
-            merchant: selectedFile.merchant,
-            total: selectedFile.total,
-            itemCount: selectedFile.itemCount,
-            createdAt: selectedFile.uploadedAt,
-            expiresAt: selectedFile.expiresAt,
-            processedData: selectedFile.processedData,
-          }}
-        />
-      )}
-    </>
+                  {file.expiresAt && userTier === 'freemium' && (
+                    <div className="flex items-center gap-1 text-xs text-orange-600 mb-2">
+                      <AlertCircle className="h-3 w-3" />
+                      Expires: {format(new Date(file.expiresAt), 'MMM d, yyyy')}
+                    </div>
+                  )}
+
+                  {file.confidenceScore && (
+                    <div className="text-xs text-gray-500">
+                      Confidence: {(file.confidenceScore * 100).toFixed(0)}%
+                    </div>
+                  )}
+                </div>
+
+                {file.status === 'completed' && (
+                  <div className="flex gap-2 ml-4">
+                    {getExportOptions().map(({ format, label }) => (
+                      <Button
+                        key={format}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onDownload(file.id, format)}
+                        className="flex items-center gap-1"
+                      >
+                        <Download className="h-3 w-3" />
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
