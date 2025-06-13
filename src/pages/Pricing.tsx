@@ -41,17 +41,17 @@ const Pricing = () => {
     {
       name: "Premium",
       description: "Unlimited processing with advanced features",
-      monthlyPrice: 29,
-      yearlyPrice: 290, // ~17% discount
+      monthlyPrice: 9,
+      yearlyPrice: 90, // ~17% discount
       popular: true,
       features: [
         "Unlimited receipt uploads",
         "Advanced AI-powered OCR",
         "Excel, CSV, JSON export",
-        "Cloud storage & auto-sync",
-        "Mobile app access",
-        "Automatic category detection",
-        "Expense analytics dashboard",
+        // "Cloud storage & auto-sync",
+        // "Mobile app access",
+        // "Automatic category detection",
+        // "Expense analytics dashboard",
         "Priority email support",
         "1-year data retention",
         "Advanced table recognition"
