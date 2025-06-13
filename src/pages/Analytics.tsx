@@ -1,50 +1,21 @@
-
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 import Navbar from "@/components/Navbar";
-import PremiumFeatureGate from "@/components/premium/PremiumFeatureGate";
+import PremiumGate from "@/components/premium/PremiumGate";
 import ExpenseAnalytics from "@/components/premium/ExpenseAnalytics";
 
 const Analytics = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [userTier, setUserTier] = useState<'freemium' | 'premium'>('freemium');
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/signin");
       return;
     }
-
-    if (user) {
-      fetchUserProfile();
-    }
   }, [user, loading, navigate]);
-
-  const fetchUserProfile = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_tier')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-      
-      const tier = data?.user_tier;
-      if (tier === 'premium' || tier === 'freemium') {
-        setUserTier(tier);
-      }
-    } catch (error: any) {
-      console.error('Error fetching user profile:', error);
-      setUserTier('freemium');
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -86,13 +57,12 @@ const Analytics = () => {
           </p>
         </div>
 
-        <PremiumFeatureGate
-          userTier={userTier}
+        <PremiumGate
           feature="Expense Analytics Dashboard"
           description="View detailed analytics, charts, and insights about your expenses. Available only for Premium users."
         >
           <ExpenseAnalytics />
-        </PremiumFeatureGate>
+        </PremiumGate>
       </div>
     </div>
   );

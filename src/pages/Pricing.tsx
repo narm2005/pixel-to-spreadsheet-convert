@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +7,13 @@ import { Check, Star, Crown, BarChart3, Cloud, Smartphone, Mail, Calendar, Lock 
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
-import SubscriptionManager from "@/components/premium/SubscriptionManager";
+import { useLemonSqueezy } from "@/hooks/useLemonSqueezy";
+import LemonSqueezySubscriptionManager from "@/components/premium/LemonSqueezySubscriptionManager";
 
 const Pricing = () => {
   const [isYearly, setIsYearly] = useState(false);
   const { user } = useAuth();
+  const { createCheckout, isLoading } = useLemonSqueezy();
 
   const pricingPlans = [
     {
@@ -34,7 +35,6 @@ const Pricing = () => {
         "No analytics dashboard",
         "No mobile app access"
       ],
-      stripePrice: null,
       buttonText: "Get Started Free",
       icon: null
     },
@@ -48,18 +48,12 @@ const Pricing = () => {
         "Unlimited receipt uploads",
         "Advanced AI-powered OCR",
         "Excel, CSV, JSON export",
-        // "Cloud storage & auto-sync",
-        // "Mobile app access",
-        // "Automatic category detection",
-        // "Expense analytics dashboard",
+        "Expense analytics dashboard",
         "Priority email support",
         "1-year data retention",
-        "Advanced table recognition"
+        "Advanced table recognition",
+        "Category auto-detection"
       ],
-      stripePrice: {
-        monthly: "price_monthly_premium",
-        yearly: "price_yearly_premium"
-      },
       buttonText: "Start Premium",
       icon: <Crown className="h-5 w-5" />
     }
@@ -104,16 +98,10 @@ const Pricing = () => {
       return;
     }
 
-    // For Premium plan - would integrate with Stripe
+    // For Premium plan - use Lemon Squeezy
     try {
-      const priceId = isYearly ? plan.stripePrice?.yearly : plan.stripePrice?.monthly;
-      
-      console.log(`Subscribing to ${plan.name} - ${isYearly ? 'Yearly' : 'Monthly'}`);
-      console.log(`Price ID: ${priceId}`);
-      
-      // Placeholder: redirect to signin for now
-      window.location.href = "/signin";
-      
+      const planType = isYearly ? 'yearly' : 'monthly';
+      await createCheckout(planType);
     } catch (error) {
       console.error('Error creating checkout:', error);
     }
@@ -161,7 +149,7 @@ const Pricing = () => {
         {/* Subscription Manager for authenticated users */}
         {user && (
           <div className="max-w-md mx-auto mb-12">
-            <SubscriptionManager />
+            <LemonSqueezySubscriptionManager />
           </div>
         )}
 
@@ -224,8 +212,9 @@ const Pricing = () => {
                   className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
                   variant={plan.popular ? 'default' : 'outline'}
                   onClick={() => handleSubscribe(plan)}
+                  disabled={isLoading}
                 >
-                  {plan.buttonText}
+                  {isLoading ? 'Loading...' : plan.buttonText}
                 </Button>
               </CardContent>
             </Card>
@@ -277,7 +266,7 @@ const Pricing = () => {
             <div>
               <h3 className="font-semibold mb-2">What payment methods do you accept?</h3>
               <p className="text-muted-foreground text-sm">
-                We accept all major credit cards through our secure Stripe integration.
+                We accept all major credit cards and PayPal through our secure Lemon Squeezy integration.
               </p>
             </div>
             <div>

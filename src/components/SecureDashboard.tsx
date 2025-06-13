@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
@@ -10,10 +9,10 @@ import ProcessedFilesList from "./dashboard/ProcessedFilesList";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import PremiumQuickAccess from "./dashboard/PremiumQuickAccess";
 import DashboardAuth from "./dashboard/DashboardAuth";
+import PremiumGate from "./premium/PremiumGate";
 import { useSecureFileUpload } from "@/hooks/useSecureFileUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import PremiumFeatureGate from "./premium/PremiumFeatureGate";
 
 const SecureDashboard = () => {
   const { toast } = useToast();
@@ -121,6 +120,17 @@ const SecureDashboard = () => {
   };
 
   const handleFileDownload = async (fileId: string, format: 'excel' | 'csv' | 'json') => {
+    // Check if user has premium access for non-CSV formats
+    if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
+      toast({
+        title: "Premium Feature",
+        description: "Excel and JSON exports are available for Premium users only.",
+        variant: "destructive",
+      });
+      navigate('/pricing');
+      return;
+    }
+
     try {
       const { data: fileData, error } = await supabase
         .from('processed_files')
@@ -193,11 +203,17 @@ const SecureDashboard = () => {
             fileCount={fileCount}
           />
 
-          <PremiumFeatureGate
-            userTier={userTier}
+          <PremiumGate
             feature="Advanced Export Options"
             description="Premium users get access to Excel (.xlsx) and JSON export formats, plus merged data from multiple files."
-            showUpgrade={false}
+            fallback={
+              <ResultsSection
+                processedData={processedData}
+                mergedData={mergedData}
+                onExport={handleExport}
+                userTier={userTier}
+              />
+            }
           >
             <ResultsSection
               processedData={processedData}
@@ -205,7 +221,7 @@ const SecureDashboard = () => {
               onExport={handleExport}
               userTier={userTier}
             />
-          </PremiumFeatureGate>
+          </PremiumGate>
 
           <div className="mt-8">
             <ProcessedFilesList

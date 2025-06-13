@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -86,17 +85,22 @@ serve(async (req) => {
       const arrayBuffer = await fileData.arrayBuffer()
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
 
-      // Mock processing - in production, you would integrate with OCR/AI services
+      // Mock processing with category detection
+      const categories = ['groceries', 'restaurants', 'gas', 'shopping', 'travel', 'healthcare', 'entertainment']
+      const randomCategory = categories[Math.floor(Math.random() * categories.length)]
+      
       const mockProcessedData = {
         fileId: fileId,
         fileName: fileName,
         merchant: `Store ${i + 1}`,
         date: new Date().toISOString().split('T')[0],
         total: (Math.random() * 100 + 10).toFixed(2),
+        category: randomCategory,
+        confidence_score: 0.85 + Math.random() * 0.15, // 85-100% confidence
         items: [
-          { description: `Item ${i + 1}-1`, amount: (Math.random() * 50 + 5).toFixed(2), category: "Food" },
-          { description: `Item ${i + 1}-2`, amount: (Math.random() * 30 + 5).toFixed(2), category: "Beverage" },
-          { description: `Item ${i + 1}-3`, amount: (Math.random() * 20 + 5).toFixed(2), category: "Misc" }
+          { description: `Item ${i + 1}-1`, amount: (Math.random() * 50 + 5).toFixed(2), category: randomCategory },
+          { description: `Item ${i + 1}-2`, amount: (Math.random() * 30 + 5).toFixed(2), category: randomCategory },
+          { description: `Item ${i + 1}-3`, amount: (Math.random() * 20 + 5).toFixed(2), category: randomCategory }
         ]
       }
 
@@ -110,6 +114,8 @@ serve(async (req) => {
           merchant: mockProcessedData.merchant,
           total: parseFloat(mockProcessedData.total),
           item_count: mockProcessedData.items.length,
+          category: mockProcessedData.category,
+          confidence_score: mockProcessedData.confidence_score,
           processed_data: mockProcessedData,
           updated_at: new Date().toISOString()
         })
@@ -119,6 +125,31 @@ serve(async (req) => {
       if (updateError) {
         console.error(`Error updating file record ${fileId}:`, updateError)
         throw new Error(`Failed to update file record: ${fileId}`)
+      }
+
+      // Update expense analytics for premium users
+      try {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('user_tier')
+          .eq('id', user.id)
+          .single()
+
+        if (userProfile?.user_tier === 'premium') {
+          await supabase.functions.invoke('update-expense-analytics', {
+            body: {
+              fileId: fileId,
+              userId: user.id,
+              merchant: mockProcessedData.merchant,
+              total: mockProcessedData.total,
+              category: mockProcessedData.category,
+              date: mockProcessedData.date
+            }
+          })
+        }
+      } catch (analyticsError) {
+        console.error('Error updating analytics:', analyticsError)
+        // Don't fail the main process for analytics errors
       }
     }
 
