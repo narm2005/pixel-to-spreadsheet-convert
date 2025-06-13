@@ -39,8 +39,43 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_analytics: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          month_year: string
+          total_amount: number
+          transaction_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          month_year: string
+          total_amount?: number
+          transaction_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          month_year?: string
+          total_amount?: number
+          transaction_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       processed_files: {
         Row: {
+          category: string | null
+          confidence_score: number | null
           created_at: string
           expires_at: string | null
           file_name: string
@@ -56,6 +91,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string | null
+          confidence_score?: number | null
           created_at?: string
           expires_at?: string | null
           file_name: string
@@ -71,6 +108,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string | null
+          confidence_score?: number | null
           created_at?: string
           expires_at?: string | null
           file_name?: string
@@ -114,6 +153,42 @@ export type Database = {
           picture?: string | null
           updated_at?: string
           user_tier?: string | null
+        }
+        Relationships: []
+      }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

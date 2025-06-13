@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "./Navbar";
@@ -10,7 +11,10 @@ import { useSecureFileUpload } from "@/hooks/useSecureFileUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Crown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Crown, BarChart3, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import PremiumFeatureGate from "./premium/PremiumFeatureGate";
 
 const SecureDashboard = () => {
   const { toast } = useToast();
@@ -18,6 +22,7 @@ const SecureDashboard = () => {
   const { user, signOut, loading } = useAuth();
   const [processedFiles, setProcessedFiles] = useState([]);
   const [userTier, setUserTier] = useState<'freemium' | 'premium'>('freemium');
+  const [fileCount, setFileCount] = useState(0);
 
   const {
     selectedFile,
@@ -41,6 +46,7 @@ const SecureDashboard = () => {
     if (user) {
       fetchUserProfile();
       fetchProcessedFiles();
+      fetchUserFileCount();
     }
   }, [user, loading, navigate]);
 
@@ -68,6 +74,20 @@ const SecureDashboard = () => {
     }
   };
 
+  const fetchUserFileCount = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_file_count', { user_uuid: user.id });
+
+      if (error) throw error;
+      setFileCount(data || 0);
+    } catch (error: any) {
+      console.error('Error fetching file count:', error);
+    }
+  };
+
   const fetchProcessedFiles = async () => {
     if (!user) return;
 
@@ -90,7 +110,9 @@ const SecureDashboard = () => {
         total: file.total?.toString(),
         itemCount: file.item_count,
         expiresAt: file.expires_at,
-        processedData: file.processed_data
+        processedData: file.processed_data,
+        category: file.category,
+        confidenceScore: file.confidence_score
       })) || [];
 
       setProcessedFiles(formattedFiles);
@@ -143,6 +165,7 @@ const SecureDashboard = () => {
   useEffect(() => {
     if (processedData) {
       fetchProcessedFiles();
+      fetchUserFileCount();
     }
   }, [processedData]);
 
@@ -160,6 +183,8 @@ const SecureDashboard = () => {
   if (!user) {
     return null;
   }
+
+  const remainingFiles = userTier === 'premium' ? 'Unlimited' : Math.max(0, 10 - fileCount);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -179,22 +204,69 @@ const SecureDashboard = () => {
                 Convert Images & PDFs to Excel, CSV, or JSON
               </h1>
               <p className="text-gray-600">
-                Securely upload your images or PDF files with table data and convert them to structured data formats. 
-                {userTier === 'freemium' && <span className="font-medium"> Free tier: 10 files total.</span>}
+                Securely upload your images or PDF files with table data and convert them to structured data formats.
               </p>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Files used</p>
+                <p className="text-lg font-semibold">
+                  {userTier === 'premium' ? 'Unlimited' : `${fileCount}/10`}
+                </p>
+              </div>
               <Badge variant={userTier === 'premium' ? 'default' : 'secondary'} className="flex items-center gap-1">
                 {userTier === 'premium' ? (
                   <Crown className="h-3 w-3" />
                 ) : (
                   <Clock className="h-3 w-3" />
                 )}
-                {userTier === 'premium' ? 'Premium' : 'Freemium (30-day expiry)'}
+                {userTier === 'premium' ? 'Premium' : 'Freemium'}
               </Badge>
             </div>
           </div>
+          
+          {/* Usage Warning for Free Users */}
+          {userTier === 'freemium' && fileCount >= 8 && (
+            <Card className="mt-4 border-orange-200 bg-orange-50">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="h-4 w-4 text-orange-600" />
+                    <p className="text-sm text-orange-800">
+                      You have {remainingFiles} files remaining in your free plan.
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => navigate('/pricing')}
+                    className="bg-orange-600 hover:bg-orange-700"
+                  >
+                    Upgrade Now
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
+
+        {/* Premium Features Quick Access */}
+        {userTier === 'premium' && (
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/analytics')}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics Dashboard
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-xs">
+                  View spending insights and category breakdowns
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <ProcessSteps />
 
@@ -206,18 +278,29 @@ const SecureDashboard = () => {
           onFileSelect={handleFileSelect}
           onDrop={handleDrop}
           onProcessFile={handleProcessFile}
+          userTier={userTier}
+          fileCount={fileCount}
         />
 
-        <ResultsSection
-          processedData={processedData}
-          mergedData={mergedData}
-          onExport={handleExport}
-        />
+        <PremiumFeatureGate
+          userTier={userTier}
+          feature="Advanced Export Options"
+          description="Premium users get access to Excel (.xlsx) and JSON export formats, plus merged data from multiple files."
+          showUpgrade={false}
+        >
+          <ResultsSection
+            processedData={processedData}
+            mergedData={mergedData}
+            onExport={handleExport}
+            userTier={userTier}
+          />
+        </PremiumFeatureGate>
 
         <div className="mt-8">
           <ProcessedFilesList
             files={processedFiles}
             onDownload={handleFileDownload}
+            userTier={userTier}
           />
         </div>
       </div>
