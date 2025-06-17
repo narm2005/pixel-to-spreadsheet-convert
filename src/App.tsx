@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Pricing from "./pages/Pricing";
+import Feedback from "./pages/Feedback";
 import SecureSignIn from "./components/SecureSignIn";
 import SecureDashboard from "./components/SecureDashboard";
 import NotFound from "./pages/NotFound";
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/feedback" element={<Feedback />} />
             <Route path="/signin" element={<SecureSignIn />} />
             <Route path="/dashboard" element={<SecureDashboard />} />
             <Route path="/analytics" element={<Analytics />} />

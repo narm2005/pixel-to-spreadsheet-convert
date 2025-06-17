@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,7 +9,7 @@ import {
   DropdownMenuSeparator 
 } from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut, BarChart3, Crown, Settings } from "lucide-react";
+import { Menu, X, User, LogOut, BarChart3, Crown, Settings, MessageSquare } from "lucide-react";
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -60,6 +59,15 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
             >
               Pricing
             </Link>
+            <Link 
+              to="/feedback" 
+              className={`text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1 ${
+                isActive('/feedback') ? 'text-blue-600 border-b-2 border-blue-600' : ''
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Feedback
+            </Link>
             
             {isAuthenticated && (
               <>
@@ -106,6 +114,12 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
                     <Link to="/pricing" className="flex items-center gap-2">
                       <Crown className="h-4 w-4" />
                       Upgrade to Premium
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/feedback" className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Give Feedback
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -156,6 +170,13 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Pricing
+              </Link>
+              <Link 
+                to="/feedback" 
+                className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Feedback
               </Link>
               
               {isAuthenticated ? (
