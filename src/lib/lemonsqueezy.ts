@@ -5,7 +5,7 @@ lemonSqueezySetup({
   apiKey: import.meta.env.VITE_LEMONSQUEEZY_API_KEY,
   onError: (error) => console.error('Lemon Squeezy Error:', error),
 });
-
+//console.log('Lemon Squeezy PREMIUM Monthly:', import.meta.env.VITE_LEMONSQUEEZY_PREMIUM_MONTHLY_VARIANT_ID);
 export const LEMONSQUEEZY_CONFIG = {
   storeId: import.meta.env.VITE_LEMONSQUEEZY_STORE_ID,
   variantIds: {

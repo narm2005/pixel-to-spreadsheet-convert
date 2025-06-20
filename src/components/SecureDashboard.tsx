@@ -13,6 +13,7 @@ import PremiumGate from "./premium/PremiumGate";
 import { useSecureFileUpload } from "@/hooks/useSecureFileUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { fi } from "date-fns/locale";
 
 const SecureDashboard = () => {
   const { toast } = useToast();
@@ -140,15 +141,36 @@ const SecureDashboard = () => {
 
       if (error) throw error;
 
-      if (fileData?.processed_data) {
-        await handleExport(format);
-      } else {
-        toast({
-          title: "No data available",
-          description: "This file hasn't been processed yet or has no data.",
-          variant: "destructive",
-        });
-      }
+      if (fileData && fileData.processed_data) {
+      const receipt = fileData.processed_data;
+
+      const convertedMergedData = {
+        summary: {
+          totalFiles: 1,
+          totalAmount: parseFloat(receipt.total),
+          totalItems: receipt.items.length,
+          processedAt: receipt.date || new Date().toISOString()
+        },
+        combinedItems: receipt.items.map((item, index) => ({
+          receiptNumber: 1,
+          merchant: receipt.merchant,
+          date: receipt.date,
+          description: item.description,
+          amount: item.amount,
+          category: item.category || '',
+          fileName: receipt.fileName || 'receipt'
+        }))
+      };
+
+      await handleExport(format, convertedMergedData);
+    } else {
+      toast({
+        title: "No data available",
+        description: "This file hasn't been processed yet or has no data.",
+        variant: "destructive",
+      });
+    }
+
     } catch (error: any) {
       toast({
         title: "Download failed",

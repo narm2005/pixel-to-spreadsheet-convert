@@ -9,6 +9,8 @@ export const useLemonSqueezy = () => {
   const { toast } = useToast();
 
   const createCheckout = async (plan: 'monthly' | 'yearly') => {
+    console.log('Creating checkout for plan:', plan);
+    // Validate user authentication
     if (!user) {
       toast({
         title: "Authentication required",
@@ -24,9 +26,17 @@ export const useLemonSqueezy = () => {
       const variantId = plan === 'monthly' 
         ? LEMONSQUEEZY_CONFIG.variantIds.premium_monthly
         : LEMONSQUEEZY_CONFIG.variantIds.premium_yearly;
-
+        console.log('Selected plan:', LEMONSQUEEZY_CONFIG.variantIds.premium_monthly);
+        console.log('Using variant ID:', variantId);
       if (!variantId) {
         throw new Error('Variant ID not configured');
+      }
+      if (variantId) {
+      toast({
+        title: "Checkout Will be coming Soon",
+        description: "Failed to create checkout session.",
+        variant: "destructive",
+      });
       }
 
       const checkoutUrl = createCheckoutUrl({

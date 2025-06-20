@@ -174,25 +174,28 @@ export const useSecureFileUpload = () => {
     }
   };
 
-  const handleExport = async (format: 'excel' | 'csv' | 'json') => {
-    if (!mergedData || !user) return;
+  const handleExport = async (format: 'excel' | 'csv' | 'json', exportData: any) => {
+    if (!exportData || !user) {
+      toast({
+        title: "Missing data",
+        description: "Please process your files before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const { data, error } = await supabase.functions
-        .invoke('export-merged-data', {
-          body: { 
-            mergedData: mergedData,
-            format,
-            userId: user.id
-          }
-        });
+      const { data, error } = await supabase.functions.invoke('export-merged-data', {
+        body: {
+          mergedData: exportData,
+          format,
+          userId: user.id
+        }
+      });
 
       if (error) throw error;
 
-      // Create download link
-      const blob = new Blob([data.content], { 
-        type: data.contentType 
-      });
+      const blob = new Blob([data.content], { type: data.contentType });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -204,7 +207,7 @@ export const useSecureFileUpload = () => {
 
       toast({
         title: `Exported as ${format.toUpperCase()}`,
-        description: `Your merged data has been exported successfully.`,
+        description: `Your data has been exported successfully.`,
       });
     } catch (error: any) {
       toast({
@@ -216,7 +219,7 @@ export const useSecureFileUpload = () => {
   };
 
   return {
-    selectedFile, // For backward compatibility
+    selectedFile,
     selectedFiles,
     isProcessing,
     uploadProgress,

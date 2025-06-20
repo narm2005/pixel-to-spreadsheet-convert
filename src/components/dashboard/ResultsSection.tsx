@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 interface ResultsSectionProps {
   processedData: any;
   mergedData?: any;
-  onExport: (format: 'excel' | 'csv' | 'json') => void;
+  onExport: (format: 'excel' | 'csv' | 'json', processedData: any ) => void;
   userTier: 'freemium' | 'premium';
 }
 

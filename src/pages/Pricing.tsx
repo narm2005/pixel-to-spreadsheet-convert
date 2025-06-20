@@ -101,6 +101,7 @@ const Pricing = () => {
     // For Premium plan - use Lemon Squeezy
     try {
       const planType = isYearly ? 'yearly' : 'monthly';
+      //console.log("planType", planType);
       await createCheckout(planType);
     } catch (error) {
       console.error('Error creating checkout:', error);
