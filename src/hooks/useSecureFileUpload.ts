@@ -183,40 +183,89 @@ export const useSecureFileUpload = () => {
       });
       return;
     }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('export-merged-data', {
+    console.log('Exporting data:', exportData);
+    if ((format === 'excel' || format === 'json') && user.tier === 'freemium') {
+      toast({
+        title: "Premium Feature",
+        description: "Excel and JSON exports are available for Premium users only.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // setIsProcessing(true);
+    // setUploadProgress(0);
+    // console.log('Preparing to export data in format:', format);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    console.log('Export timestamp:', timestamp);
+    console.log('User ID for export:', user.id);
+    console.log('Exporting merged data:', exportData);  
+   
+try {
+    const { data, error } = await supabase.functions.invoke(
+      'export-merged-data',
+      {
         body: {
           mergedData: exportData,
           format,
           userId: user.id
         }
+      }
+    );
+
+    if (error) {
+      throw new Error(error.message || 'Export failed');
+    }
+
+    let blob, filename;
+    
+    if (format === 'excel') {
+      // Convert base64 to Blob
+      const byteCharacters = atob(data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      filename = `receipts-${new Date().toISOString().split('T')[0]}.xlsx`;
+    } else {
+      // For CSV/JSON
+      const content = format === 'csv' ? data : JSON.stringify(data, null, 2);
+      blob = new Blob([content], { 
+        type: format === 'csv' ? 'text/csv' : 'application/json' 
       });
+      filename = `receipts-${new Date().toISOString().split('T')[0]}.${format}`;
+    }
 
-      if (error) throw error;
-
-      const blob = new Blob([data.content], { type: data.contentType });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = data.filename;
-      document.body.appendChild(a);
-      a.click();
+    // Trigger download
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+    }, 100);
 
-      toast({
-        title: `Exported as ${format.toUpperCase()}`,
-        description: `Your data has been exported successfully.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Export failed",
-        description: error.message || "An error occurred while exporting.",
-        variant: "destructive",
-      });
-    }
-  };
+    toast({
+      title: `Exported as ${format.toUpperCase()}`,
+      description: 'Download started successfully',
+    });
+
+  } catch (error) {
+    toast({
+      title: 'Export failed',
+      description: error.message,
+      variant: 'destructive'
+    });
+    console.error('Export error:', error);
+  }
+
+};
 
   return {
     selectedFile,

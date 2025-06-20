@@ -50,13 +50,14 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
     }
   ];
 
-  const handleExport = (format: 'excel' | 'csv' | 'json') => {
+  const handleExport = (format: 'excel' | 'csv' | 'json', displayData) => {
     const option = exportOptions.find(opt => opt.format === format);
     if (option?.premium && userTier === 'freemium') {
       navigate('/pricing');
       return;
     }
-    onExport(format);
+    onExport(format,displayData);
+    console.log(`Exporting data in ${format} format`, displayData);
   };
 
   return (
