@@ -34,6 +34,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // if (!session) {
+      //   // Force Supabase to check URL hash (#access_token)
+      //   supabase.auth.getUser().then(() => {
+      //     // Optionally handle the result if needed
+      //   });
+      // }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -74,14 +80,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`
-      }
-    });
-    return { error };
-  };
+  const redirectUrl =
+    import.meta.env.MODE === "development"
+      ? "http://localhost:8080/dashboard"
+      : "https://pixel-to-spreadsheet-convert.onrender.com/dashboard";
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: redirectUrl,
+    },
+  });
+
+  return { error };
+};
 
   return (
     <AuthContext.Provider value={{
