@@ -23,6 +23,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
+     // Parse hash fragment for access_token if present (for OAuth redirect)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const access_token = params.get('access_token');
+    if (access_token) {
+      supabase.auth.setSession({
+        access_token,
+        refresh_token: params.get('refresh_token') || '',
+      });
+      // Optionally, remove the hash from the URL
+      window.location.hash = '';
+    }
+  }
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
