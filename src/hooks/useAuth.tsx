@@ -175,7 +175,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     const redirectUrl = `${window.location.origin}/dashboard`;
-    
+    // Ensure the redirect URL is set correctly for OAuth
+    if (!redirectUrl) {
+      toast({
+        title: "Error",
+        description: "Redirect URL is not set. Please check your configuration.",
+        variant: "destructive",
+      });
+      return { error: new Error("Redirect URL is not set") };
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
