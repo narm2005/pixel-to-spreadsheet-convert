@@ -18,6 +18,7 @@ const SecureDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { session, loading } = useAuth();
   const [processedFiles, setProcessedFiles] = useState([]);
   const [userTier, setUserTier] = useState<'freemium' | 'premium'>('freemium');
   const [fileCount, setFileCount] = useState(0);
@@ -54,6 +55,12 @@ const SecureDashboard = () => {
 //     }
 //   }
 // }, []);
+
+  useEffect(() => {
+   if (!loading && !session) {
+    navigate("/signin");
+    }
+  }, [session, loading]);
 
   const fetchUserProfile = async () => {
     if (!user) return;
