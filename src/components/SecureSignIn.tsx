@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +60,7 @@ const SecureSignIn = () => {
 
   const handleGoogleSignIn = async () => {
     try {
+      setIsLoading(true);
       const { error } = await signInWithGoogle();
       if (error) {
         toast({
@@ -69,12 +69,16 @@ const SecureSignIn = () => {
           variant: "destructive",
         });
       }
+      // Note: For OAuth, the redirect happens automatically
+      // The user will be redirected to Google and then back to our app
     } catch (error: any) {
       toast({
         title: "Google Sign-In Failed",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -99,7 +103,7 @@ const SecureSignIn = () => {
                 className="w-full"
                 disabled={isLoading}
               >
-                Continue with Google
+                {isLoading ? "Loading..." : "Continue with Google"}
               </Button>
             </div>
 

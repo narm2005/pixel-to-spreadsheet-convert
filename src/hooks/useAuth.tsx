@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,43 +22,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-     // Parse hash fragment for access_token if present (for OAuth redirect)
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    const params = new URLSearchParams(window.location.hash.substring(1));
-    const access_token = params.get('access_token');
-    if (access_token) {
-      supabase.auth.setSession({
-        access_token,
-        refresh_token: params.get('refresh_token') || '',
-      });
-      // Optionally, remove the hash from the URL
-      window.location.hash = '';
-    }
-  }
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // if (!session) {
-      //   // Force Supabase to check URL hash (#access_token)
-      //   supabase.auth.getUser().then(() => {
-      //     // Optionally handle the result if needed
-      //   });
-      // }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        // Handle successful OAuth sign in
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Create or update user profile
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: session.user.id,
+              name: session.user.user_metadata?.name || session.user.user_metadata?.full_name,
+              email: session.user.email,
+              picture: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'id'
+            });
+
+          if (profileError) {
+            console.error('Error updating profile:', profileError);
+          }
+
+          toast({
+            title: "Welcome!",
+            description: "You have successfully signed in.",
+          });
+        }
+
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+        }
+      }
+    );
+
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -70,7 +82,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/dashboard`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -93,20 +105,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithGoogle = async () => {
-  const redirectUrl =
-    import.meta.env.MODE === "development"
-      ? "http://localhost:8080/dashboard"
-      : "https://pixel-to-spreadsheet-convert.onrender.com/dashboard";
+    const redirectUrl = `${window.location.origin}/dashboard`;
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      },
+    });
 
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: redirectUrl,
-    },
-  });
-
-  return { error };
-};
+    return { error };
+  };
 
   return (
     <AuthContext.Provider value={{
