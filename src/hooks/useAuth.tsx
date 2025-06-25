@@ -23,29 +23,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // Handle OAuth callback - check for hash parameters first
-    const handleOAuthCallback = async () => {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
+    // const handleOAuthCallback = async () => {
+    //   const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    //   const accessToken = hashParams.get('access_token');
+    //   const refreshToken = hashParams.get('refresh_token');
       
-      if (accessToken && refreshToken) {
-        console.log('OAuth callback detected, setting session...');
+    //   if (accessToken && refreshToken) {
+    //     console.log('OAuth callback detected, setting session...');
         
-        try {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+    //     try {
+    //       const { data, error } = await supabase.auth.setSession({
+    //         access_token: accessToken,
+    //         refresh_token: refreshToken,
+    //       });
           
-          if (error) {
-            console.error('Error setting session:', error);
-            throw error;
-          }
+    //       if (error) {
+    //         console.error('Error setting session:', error);
+    //         throw error;
+    //       }
           
-          console.log('Session set successfully:', data);
+    //       console.log('Session set successfully:', data);
           
-          // Clear the hash from URL and redirect to clean dashboard URL
-          window.history.replaceState(null, '', '/dashboard');
+          // Clear the hash from URL
+          window.history.replaceState(null, '', window.location.pathname);
           
           return true; // Indicates OAuth callback was handled
         } catch (error) {
@@ -55,32 +55,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Failed to complete Google sign-in. Please try again.",
             variant: "destructive",
           });
-          // Redirect to sign-in page on error
-          window.history.replaceState(null, '', '/signin');
           return false;
         }
       }
       
-      return false; // No OAuth callback detected
-    };
+    //   return false; // No OAuth callback detected
+    // };
 
     // Initialize auth state
-    const initializeAuth = async () => {
-      try {
-        // First, try to handle OAuth callback
-        const wasOAuthCallback = await handleOAuthCallback();
+    // const initializeAuth = async () => {
+    //   try {
+    //     // First, try to handle OAuth callback
+    //     const wasOAuthCallback = await handleOAuthCallback();
         
-        if (!wasOAuthCallback) {
-          // If not an OAuth callback, get existing session
-          const { data: { session }, error } = await supabase.auth.getSession();
+    //     if (!wasOAuthCallback) {
+    //       // If not an OAuth callback, get existing session
+    //       const { data: { session }, error } = await supabase.auth.getSession();
           
-          if (error) {
-            console.error('Error getting session:', error);
-          }
+    //       if (error) {
+    //         console.error('Error getting session:', error);
+    //       }
           
-          setSession(session);
-          setUser(session?.user ?? null);
+    //       setSession(session);
+    //       setUser(session?.user ?? null);
+    //     }
+    //   } catch (error) {
+    //     console.error('Auth initialization error:', error);
+    //   } finally {
+    //     setLoading(false);
+    //   }
+    // };
+
+    const initializeAuth = async () => {
+    try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Error getting session:', error);
         }
+
+        setSession(session);
+        setUser(session?.user ?? null);
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
