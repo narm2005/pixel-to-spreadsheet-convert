@@ -37,6 +37,7 @@ const SecureDashboard = () => {
   } = useSecureFileUpload();
 
   useEffect(() => {
+    console.log("SecureDashboard mounted");
   // Handle Supabase OAuth redirect with hash fragment
   if (window.location.hash && window.location.hash.includes('access_token')) {
     const params = new URLSearchParams(window.location.hash.substring(1));
