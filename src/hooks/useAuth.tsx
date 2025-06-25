@@ -44,8 +44,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           console.log('Session set successfully:', data);
           
-          // Clear the hash from URL
-          window.history.replaceState(null, '', window.location.pathname);
+          // Clear the hash from URL and redirect to clean dashboard URL
+          window.history.replaceState(null, '', '/dashboard');
           
           return true; // Indicates OAuth callback was handled
         } catch (error) {
@@ -55,6 +55,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Failed to complete Google sign-in. Please try again.",
             variant: "destructive",
           });
+          // Redirect to sign-in page on error
+          window.history.replaceState(null, '', '/signin');
           return false;
         }
       }
@@ -174,16 +176,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithGoogle = async () => {
+    // Use the current origin for redirect URL to support custom domains
     const redirectUrl = `${window.location.origin}/dashboard`;
-    // Ensure the redirect URL is set correctly for OAuth
-    if (!redirectUrl) {
-      toast({
-        title: "Error",
-        description: "Redirect URL is not set. Please check your configuration.",
-        variant: "destructive",
-      });
-      return { error: new Error("Redirect URL is not set") };
-    }
+    
+    console.log('Google OAuth redirect URL:', redirectUrl);
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
