@@ -181,6 +181,8 @@ const SecureDashboard = () => {
   };
 
   useEffect(() => {
+    console.log("Logged in user:", user);
+
     if (user) {
       fetchUserProfile();
       fetchProcessedFiles();
