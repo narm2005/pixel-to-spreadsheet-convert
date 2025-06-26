@@ -39,9 +39,9 @@ const Index = () => {
                 Try It Free
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-gray-900">
+            {/* <Button size="lg" variant="outline" className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-gray-900">
               View Demo
-            </Button>
+            </Button> */}
           </div>
         </div>
       </section>
