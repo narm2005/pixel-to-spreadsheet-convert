@@ -22,32 +22,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Handle OAuth callback - check for hash parameters first
-    // const handleOAuthCallback = async () => {
-    //   const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    //   const accessToken = hashParams.get('access_token');
-    //   const refreshToken = hashParams.get('refresh_token');
+    // Handle OAuth callback immediately on page load
+    const handleOAuthCallback = async () => {
+      const currentUrl = window.location.href;
+      console.log('Current URL:', currentUrl);
       
-    //   if (accessToken && refreshToken) {
-    //     console.log('OAuth callback detected, setting session...');
+      // Check for OAuth callback in hash
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        console.log('OAuth callback detected in hash');
         
-    //     try {
-    //       const { data, error } = await supabase.auth.setSession({
-    //         access_token: accessToken,
-    //         refresh_token: refreshToken,
-    //       });
+        try {
+          // Extract tokens from hash
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
           
-    //       if (error) {
-    //         console.error('Error setting session:', error);
-    //         throw error;
-    //       }
-          
-    //       console.log('Session set successfully:', data);
-          
-          // Clear the hash from URL
-          window.history.replaceState(null, '', window.location.pathname);
-          
-          return true; // Indicates OAuth callback was handled
+          if (accessToken && refreshToken) {
+            console.log('Setting session with tokens...');
+            
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            
+            if (error) {
+              console.error('Error setting session:', error);
+              throw error;
+            }
+            
+            console.log('Session set successfully:', data);
+            
+            // Clean up URL immediately
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
+            // Set user state
+            setSession(data.session);
+            setUser(data.session?.user ?? null);
+            setLoading(false);
+            
+            toast({
+              title: "Welcome!",
+              description: "Successfully signed in with Google",
+            });
+            
+            return true;
+          }
         } catch (error) {
           console.error('OAuth callback error:', error);
           toast({
@@ -55,47 +75,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "Failed to complete Google sign-in. Please try again.",
             variant: "destructive",
           });
+          
+          // Redirect to sign-in on error
+          window.location.href = '/signin';
           return false;
         }
       }
       
-    //   return false; // No OAuth callback detected
-    // };
+      // Check for OAuth callback in query params (fallback)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('code')) {
+        console.log('OAuth callback detected in query params');
+        
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(urlParams.get('code')!);
+          
+          if (error) throw error;
+          
+          console.log('Session exchanged successfully:', data);
+          
+          // Clean up URL
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+          setLoading(false);
+          
+          return true;
+        } catch (error) {
+          console.error('Code exchange error:', error);
+          toast({
+            title: "Authentication Error",
+            description: "Failed to complete authentication. Please try again.",
+            variant: "destructive",
+          });
+          
+          window.location.href = '/signin';
+          return false;
+        }
+      }
+      
+      return false;
+    };
 
     // Initialize auth state
-    // const initializeAuth = async () => {
-    //   try {
-    //     // First, try to handle OAuth callback
-    //     const wasOAuthCallback = await handleOAuthCallback();
-        
-    //     if (!wasOAuthCallback) {
-    //       // If not an OAuth callback, get existing session
-    //       const { data: { session }, error } = await supabase.auth.getSession();
-          
-    //       if (error) {
-    //         console.error('Error getting session:', error);
-    //       }
-          
-    //       setSession(session);
-    //       setUser(session?.user ?? null);
-    //     }
-    //   } catch (error) {
-    //     console.error('Auth initialization error:', error);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-
     const initializeAuth = async () => {
-    try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Error getting session:', error);
+      try {
+        // First, try to handle OAuth callback
+        const wasOAuthCallback = await handleOAuthCallback();
+        
+        if (!wasOAuthCallback) {
+          // If not an OAuth callback, get existing session
+          console.log('Getting existing session...');
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('Error getting session:', error);
+          }
+          
+          console.log('Existing session:', session?.user?.email);
+          setSession(session);
+          setUser(session?.user ?? null);
         }
-
-        setSession(session);
-        setUser(session?.user ?? null);
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
@@ -136,10 +178,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.log('Profile updated successfully');
             }
 
-            toast({
-              title: "Welcome!",
-              description: `Successfully signed in as ${session.user.email}`,
-            });
+            // Only show toast if not already shown during OAuth callback
+            if (event !== 'TOKEN_REFRESHED') {
+              toast({
+                title: "Welcome!",
+                description: `Successfully signed in as ${session.user.email}`,
+              });
+            }
           } catch (error) {
             console.error('Error in sign-in handler:', error);
           }

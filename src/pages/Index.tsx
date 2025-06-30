@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
@@ -15,11 +14,20 @@ import {
   Download
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
+      <Navbar 
+        isAuthenticated={!!user}
+        user={user ? {
+          name: user.user_metadata?.name || user.email,
+          picture: user.user_metadata?.picture
+        } : undefined}
+      />
       
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white py-20 overflow-hidden">
@@ -34,14 +42,24 @@ const Index = () => {
             your receipt data. Say goodbye to manual data entry forever.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/signin">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4">
-                Try It Free
-              </Button>
-            </Link>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-gray-900">
-              View Demo
-            </Button>
+            {!user ? (
+              <>
+                <Link to="/signin">
+                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4">
+                    Try It Free
+                  </Button>
+                </Link>
+                <Button size="lg" variant="outline" className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-gray-900">
+                  View Demo
+                </Button>
+              </>
+            ) : (
+              <Link to="/dashboard">
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -92,42 +110,6 @@ const Index = () => {
                 </p>
               </CardContent>
             </Card>
-            
-            {/* <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="pt-8 pb-6">
-                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Smartphone className="h-8 w-8 text-orange-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Mobile App</h3>
-                <p className="text-gray-600">
-                  Capture receipts on the go with our iOS and Android apps.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="pt-8 pb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Cloud className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Cloud Sync</h3>
-                <p className="text-gray-600">
-                  Access your receipt data anywhere with secure cloud storage.
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="pt-8 pb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <BarChart3 className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Expense Analytics</h3>
-                <p className="text-gray-600">
-                  Visualize spending patterns and generate expense reports automatically.
-                </p>
-              </CardContent>
-            </Card> */}
           </div>
         </div>
       </section>
@@ -198,86 +180,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      {/* <section className="py-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Users Say</h2>
-            <p className="text-xl text-gray-600">
-              Trusted by finance professionals and businesses worldwide
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg">
-              <CardContent className="pt-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
-                    {"★".repeat(5)}
-                  </div>
-                </div>
-                <p className="text-gray-600 mb-4">
-                  "SlickReceipts has revolutionized our expense reporting. What used to take hours now takes minutes!"
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                    S
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Sarah Johnson</p>
-                    <p className="text-sm text-gray-600">CFO, Tech Startup</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-0 shadow-lg">
-              <CardContent className="pt-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
-                    {"★".repeat(5)}
-                  </div>
-                </div>
-                <p className="text-gray-600 mb-4">
-                  "The accuracy is incredible. I barely need to make any corrections to the extracted data."
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                    M
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Mike Chen</p>
-                    <p className="text-sm text-gray-600">Small Business Owner</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-0 shadow-lg">
-              <CardContent className="pt-6">
-                <div className="flex items-center mb-4">
-                  <div className="flex text-yellow-400">
-                    {"★".repeat(5)}
-                  </div>
-                </div>
-                <p className="text-gray-600 mb-4">
-                  "Perfect for our accounting team. The Excel export feature saves us so much time."
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                    A
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Anna Rodriguez</p>
-                    <p className="text-sm text-gray-600">Accounting Manager</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section> */}
-
       {/* CTA Section */}
       <section className="py-20 bg-blue-600 text-white">
         <div className="max-w-4xl mx-auto px-6 text-center">
@@ -285,11 +187,19 @@ const Index = () => {
           <p className="text-xl mb-8 opacity-90">
             Join thousands of businesses already using SlickReceipts to streamline their expense management.
           </p>
-          <Link to="/signin">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4">
-              Get Started Free
-            </Button>
-          </Link>
+          {!user ? (
+            <Link to="/signin">
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4">
+                Get Started Free
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/dashboard">
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4">
+                Go to Dashboard
+              </Button>
+            </Link>
+          )}
         </div>
       </section>
 

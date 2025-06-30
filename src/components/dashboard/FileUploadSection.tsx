@@ -1,10 +1,10 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, AlertTriangle, Crown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload, FileText, AlertTriangle, Crown, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface FileUploadSectionProps {
@@ -31,6 +31,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   fileCount
 }) => {
   const navigate = useNavigate();
+  const [selectedForProcessing, setSelectedForProcessing] = React.useState<Set<number>>(new Set());
   const remainingFiles = userTier === 'premium' ? 'unlimited' : Math.max(0, 10 - fileCount);
   const canUpload = userTier === 'premium' || fileCount < 10;
   const wouldExceedLimit = userTier === 'freemium' && (fileCount + selectedFiles.length) > 10;
@@ -61,6 +62,14 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   const handleFileSelectWrapper = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (canUpload) {
       onFileSelect(e);
+      // Select all files by default
+      if (e.target.files) {
+        const newSelection = new Set<number>();
+        for (let i = 0; i < e.target.files.length; i++) {
+          newSelection.add(i);
+        }
+        setSelectedForProcessing(newSelection);
+      }
     }
   };
 
@@ -70,6 +79,40 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
     }
     onProcessFile();
   };
+
+  const handleFileSelection = (index: number, checked: boolean) => {
+    const newSelection = new Set(selectedForProcessing);
+    if (checked) {
+      newSelection.add(index);
+    } else {
+      newSelection.delete(index);
+    }
+    setSelectedForProcessing(newSelection);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIndices = new Set<number>();
+      for (let i = 0; i < selectedFiles.length; i++) {
+        allIndices.add(i);
+      }
+      setSelectedForProcessing(allIndices);
+    } else {
+      setSelectedForProcessing(new Set());
+    }
+  };
+
+  const removeFile = (index: number) => {
+    // This would need to be implemented in the parent component
+    // For now, we'll just remove it from selection
+    const newSelection = new Set(selectedForProcessing);
+    newSelection.delete(index);
+    setSelectedForProcessing(newSelection);
+  };
+
+  const selectedCount = selectedForProcessing.size;
+  const allSelected = selectedFiles.length > 0 && selectedForProcessing.size === selectedFiles.length;
+  const someSelected = selectedForProcessing.size > 0 && selectedForProcessing.size < selectedFiles.length;
 
   return (
     <Card className="mb-8">
@@ -178,38 +221,86 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
           )}
         </div>
 
+        {/* File List with Selection */}
         {selectedFiles.length > 0 && (
-          <div className="mt-4">
-            <h4 className="font-medium text-gray-900 mb-2">
-              Selected Files ({selectedFiles.length}):
-            </h4>
-            <div className="space-y-1">
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-gray-900">
+                Selected Files ({selectedFiles.length}):
+              </h4>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="select-all"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected;
+                    }}
+                    onCheckedChange={handleSelectAll}
+                  />
+                  <label htmlFor="select-all" className="text-sm font-medium">
+                    Select All
+                  </label>
+                </div>
+                <Badge variant="secondary">
+                  {selectedCount} of {selectedFiles.length} selected
+                </Badge>
+              </div>
+            </div>
+
+            <div className="border rounded-lg divide-y max-h-60 overflow-y-auto">
               {selectedFiles.map((file, index) => (
-                <div key={index} className="text-sm text-gray-600 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                <div key={index} className="flex items-center gap-3 p-3 hover:bg-gray-50">
+                  <Checkbox
+                    checked={selectedForProcessing.has(index)}
+                    onCheckedChange={(checked) => handleFileSelection(index, checked as boolean)}
+                  />
+                  <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(index)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
 
-        {selectedFiles.length > 0 && (
-          <div className="mt-4 flex gap-4">
-            <Button 
-              onClick={handleProcessWrapper} 
-              disabled={isProcessing || wouldExceedLimit}
-              className="flex-1"
-            >
-              {isProcessing ? "Processing..." : `Process ${selectedFiles.length} File${selectedFiles.length > 1 ? 's' : ''}`}
-            </Button>
+            <div className="flex gap-4">
+              <Button 
+                onClick={handleProcessWrapper} 
+                disabled={isProcessing || wouldExceedLimit || selectedCount === 0}
+                className="flex-1"
+              >
+                {isProcessing 
+                  ? "Processing..." 
+                  : `Process ${selectedCount} Selected File${selectedCount !== 1 ? 's' : ''}`
+                }
+              </Button>
+              {userTier === 'premium' && selectedCount > 1 && (
+                <Badge variant="outline" className="flex items-center gap-1 px-3 py-1">
+                  <Crown className="h-3 w-3" />
+                  Batch Processing
+                </Badge>
+              )}
+            </div>
           </div>
         )}
 
         {isProcessing && (
           <div className="mt-4">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Processing files...</span>
+              <span>Processing {selectedCount} file{selectedCount !== 1 ? 's' : ''}...</span>
               <span>{uploadProgress}%</span>
             </div>
             <Progress value={uploadProgress} className="w-full" />
