@@ -11,7 +11,11 @@ import {
   Upload,
   Brain,
   Edit,
-  Download
+  Download,
+  AlertTriangle,
+  Shield,
+  FileText,
+  Scale
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
@@ -176,6 +180,105 @@ const Index = () => {
                 Export to Excel or integrate with your accounting software for further analysis.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Disclaimer Section */}
+      <section className="py-20 bg-gray-100">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Scale className="h-8 w-8 text-gray-600" />
+              <h2 className="text-3xl font-bold text-gray-900">Important Disclaimer</h2>
+            </div>
+            <p className="text-lg text-gray-600">
+              Please read and understand these important terms before using our service
+            </p>
+          </div>
+
+          <Card className="border-2 border-gray-200 shadow-lg">
+            <CardContent className="p-8">
+              <div className="prose prose-gray max-w-none">
+                <div className="flex items-start gap-3 mb-6">
+                  <AlertTriangle className="h-6 w-6 text-amber-500 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Disclaimer</h3>
+                    <p className="text-gray-700 mb-4">
+                      SlickReceipts.com is a micro-SaaS tool designed to extract and convert information from receipts using AI and OCR technologies. While we aim to provide accurate and efficient results, the service is provided "as is" and "as available," without warranties of any kind.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Data Accuracy</h4>
+                      <p className="text-gray-700 text-sm">
+                        The receipt data extracted and processed by our platform may not always be accurate or complete. It is the user's responsibility to verify the extracted information before relying on it for financial, business, or record-keeping purposes.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Scale className="h-5 w-5 text-purple-500 flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">No Financial Advice</h4>
+                      <p className="text-gray-700 text-sm">
+                        We do not provide financial, tax, or accounting advice, and any insights generated should not be treated as such.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Cloud className="h-5 w-5 text-green-500 flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Third-Party Services</h4>
+                      <p className="text-gray-700 text-sm">
+                        The platform may utilize third-party services (such as OCR, AI APIs, and cloud storage) to perform certain tasks. We are not liable for the availability, performance, or output of these external services.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-red-500 flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Data Privacy & Security</h4>
+                      <p className="text-gray-700 text-sm">
+                        Receipt data may contain personal and financial information. While we take reasonable measures to protect your data, users are responsible for ensuring compliance with applicable privacy laws and regulations.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Limitation of Liability</h4>
+                      <p className="text-gray-700 text-sm">
+                        We are not liable for any loss, damage, or legal liability arising from the use or misuse of the data or services provided.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">
+                    <strong>By using this service, you acknowledge and agree to the above terms.</strong> Use of this service implies acceptance of this disclaimer, as well as our Terms of Service and Privacy Policy.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="text-center mt-8">
+            <p className="text-sm text-gray-500">
+              For questions about this disclaimer or our terms, please{" "}
+              <Link to="/feedback" className="text-blue-600 hover:text-blue-700 underline">
+                contact our support team
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </section>
