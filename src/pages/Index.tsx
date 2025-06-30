@@ -312,40 +312,56 @@ const Index = () => {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-lg font-bold mb-4">SlickReceipts.com</h3>
-              <p className="text-gray-400">
+              <p className="text-gray-400 mb-4">
                 Transform your receipts into actionable data with AI-powered OCR technology.
+              </p>
+              <p className="text-sm text-gray-500">
+                Making expense management effortless for businesses and individuals worldwide.
               </p>
             </div>
             <div>
               <h4 className="font-medium mb-4">Product</h4>
               <ul className="space-y-2 text-gray-400">
-                <li>Features</li>
-                <li>Pricing</li>
-                <li>API</li>
-                <li>Integrations</li>
+                <li><Link to="/#features" className="hover:text-white transition-colors">Features</Link></li>
+                <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                <li><Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
+                <li><Link to="/analytics" className="hover:text-white transition-colors">Analytics</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-medium mb-4">Company</h4>
               <ul className="space-y-2 text-gray-400">
-                <li>About</li>
-                <li>Blog</li>
-                <li>Careers</li>
-                <li>Press</li>
+                <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+                <li><Link to="/feedback" className="hover:text-white transition-colors">Contact</Link></li>
+                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-medium mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
-                <li>Help Center</li>
-                <li>Contact</li>
-                <li>Status</li>
-                <li>Security</li>
+                <li><Link to="/feedback" className="hover:text-white transition-colors">Help Center</Link></li>
+                <li><Link to="/feedback" className="hover:text-white transition-colors">Contact Support</Link></li>
+                <li><a href="mailto:support@slickreceipts.com" className="hover:text-white transition-colors">Email Support</a></li>
+                <li><Link to="/feedback" className="hover:text-white transition-colors">Feature Requests</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 SlickReceipts.com. All rights reserved.</p>
+          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-400 text-sm">
+              &copy; 2024 SlickReceipts.com. All rights reserved.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                Privacy
+              </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+                Terms
+              </a>
+              <Link to="/feedback" className="text-gray-400 hover:text-white transition-colors text-sm">
+                Support
+              </Link>
+            </div>
           </div>
         </div>
       </footer>
