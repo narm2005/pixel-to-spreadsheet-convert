@@ -1,0 +1,19 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Receipt Background -->
+  <rect x="6" y="4" width="20" height="24" rx="2" fill="#2563eb" stroke="#1e40af" stroke-width="1"/>
+  
+  <!-- Receipt Lines -->
+  <line x1="9" y1="8" x2="23" y2="8" stroke="white" stroke-width="1" opacity="0.8"/>
+  <line x1="9" y1="11" x2="20" y2="11" stroke="white" stroke-width="1" opacity="0.6"/>
+  <line x1="9" y1="14" x2="22" y2="14" stroke="white" stroke-width="1" opacity="0.6"/>
+  <line x1="9" y1="17" x2="18" y2="17" stroke="white" stroke-width="1" opacity="0.6"/>
+  
+  <!-- Total Line -->
+  <line x1="9" y1="21" x2="23" y2="21" stroke="white" stroke-width="2"/>
+  
+  <!-- Receipt Perforation -->
+  <circle cx="6" cy="10" r="1" fill="#f3f4f6"/>
+  <circle cx="6" cy="14" r="1" fill="#f3f4f6"/>
+  <circle cx="6" cy="18" r="1" fill="#f3f4f6"/>
+  <circle cx="6" cy="22" r="1" fill="#f3f4f6"/>
+</svg>
