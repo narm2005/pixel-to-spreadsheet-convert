@@ -20,8 +20,13 @@ import {
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
+
+
 const Index = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -31,6 +36,7 @@ const Index = () => {
           name: user.user_metadata?.name || user.email,
           picture: user.user_metadata?.picture
         } : undefined}
+        onSignOut={handleSignOut}
       />
       
       {/* Hero Section */}

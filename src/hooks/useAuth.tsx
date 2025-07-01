@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<{ error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
 }
 
@@ -198,7 +198,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             description: "You have been successfully signed out.",
           });
         }
-      }
+       }
     );
 
     return () => subscription.unsubscribe();
@@ -225,13 +225,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    //const session = await supabase.auth.getSession();
+    console.log('Signing out user form useAuth:', user?.email);
+    console.log('Supabase URL:', supabase?.supabaseUrl);
+    console.log('Supabase Key:', supabase?.supabaseKey);
+
     const { error } = await supabase.auth.signOut();
     if (error) {
+      console.error('Error signing out:', error);
       toast({
         title: "Error signing out",
         description: error.message,
         variant: "destructive",
       });
+      return { error };
+    } else {
+      console.log('Supabase signOut succeeded');
+      // setUser(null);      // Clear user state immediately
+      // setSession(null);   // Clear session state immediately
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+      return { error: null };
     }
   };
 

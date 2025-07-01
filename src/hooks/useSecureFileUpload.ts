@@ -98,6 +98,7 @@ export const useSecureFileUpload = () => {
           .from('receipts')
           .upload(fileName, file);
 
+        console.log(`Uploading file ${i + 1}/${selectedFiles.length}:`, file.name);
         if (uploadError) {
           throw uploadError;
         }

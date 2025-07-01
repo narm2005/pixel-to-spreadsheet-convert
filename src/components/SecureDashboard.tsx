@@ -57,6 +57,7 @@ const SecureDashboard = () => {
     console.log("Current URL:", window.location.href);
     console.log("Session:", session);
     console.log("Loading:", loading);
+    console.log("User:", userTier);
     
     // Check if this is an OAuth callback
     if (window.location.hash && window.location.hash.includes('access_token')) {
@@ -85,6 +86,7 @@ const SecureDashboard = () => {
       if (error) throw error;
       
       const tier = data?.user_tier;
+      console.log("User tier fetched:", tier);
       if (tier === 'premium' || tier === 'freemium') {
         setUserTier(tier);
       } else {
@@ -149,6 +151,8 @@ const SecureDashboard = () => {
 
   const handleSignOut = async () => {
     await signOut();
+    // await supabase.auth.signOut();
+    console.log("User signed out");
     navigate("/");
     toast({
       title: "Signed out successfully",

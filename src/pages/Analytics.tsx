@@ -11,6 +11,8 @@ const Analytics = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Coming to Analytics:", user);
+    console.log("Loading state:", loading);
     if (!loading && !user) {
       navigate("/signin");
       return;
