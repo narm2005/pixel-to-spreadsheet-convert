@@ -20,8 +20,10 @@ const Analytics = () => {
   }, [user, loading, navigate]);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
+    const { error } = await signOut();
+    if (!error) {
+      navigate("/");
+    }
   };
 
   if (loading) {

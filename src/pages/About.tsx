@@ -15,6 +15,16 @@ import { useAuth } from "@/hooks/useAuth";
 
 const About = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    // Import signOut from useAuth
+    const { signOut } = useAuth();
+    const { error } = await signOut();
+    if (!error) {
+      navigate("/");
+    }
+  };</parameter>
 
   const values = [
     {
@@ -54,6 +64,7 @@ const About = () => {
           name: user.user_metadata?.name || user.email,
           picture: user.user_metadata?.picture
         } : undefined}
+        onSignOut={handleSignOut}
       />
       
       {/* Hero Section */}

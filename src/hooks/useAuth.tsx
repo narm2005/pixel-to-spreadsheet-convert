@@ -225,10 +225,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
-    //const session = await supabase.auth.getSession();
-    console.log('Signing out user form useAuth:', user?.email);
-    console.log('Supabase URL:', supabase?.supabaseUrl);
-    console.log('Supabase Key:', supabase?.supabaseKey);
+    console.log('Signing out user from useAuth:', user?.email);
+
+    // Clear local state immediately to prevent UI issues
+    setUser(null);
+    setSession(null);
+    setLoading(false);
 
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -241,8 +243,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return { error };
     } else {
       console.log('Supabase signOut succeeded');
-      // setUser(null);      // Clear user state immediately
-      // setSession(null);   // Clear session state immediately
+      // State already cleared above
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",

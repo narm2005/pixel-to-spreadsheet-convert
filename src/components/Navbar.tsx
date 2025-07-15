@@ -128,7 +128,9 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
                     <Link to="/feedback" className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
                       Give Feedback
-                    </Link>
+                      if (onSignOut) {
+                        onSignOut();
+                      }
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onSignOut} className="flex items-center gap-2">

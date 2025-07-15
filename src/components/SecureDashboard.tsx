@@ -150,14 +150,12 @@ const SecureDashboard = () => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    // await supabase.auth.signOut();
+    const { error } = await signOut();
+    if (!error) {
+      // Force navigation after successful signout
+      window.location.href = "/";
+    }
     console.log("User signed out");
-    navigate("/");
-    toast({
-      title: "Signed out successfully",
-      description: "You have been logged out.",
-    });
   };
 
   const handleFileDownload = async (fileId: string, format: 'excel' | 'csv' | 'json') => {

@@ -25,7 +25,11 @@ import { useAuth } from "@/hooks/useAuth";
 const Index = () => {
   const { user, signOut } = useAuth();
   const handleSignOut = async () => {
-    await signOut();
+    const { error } = await signOut();
+    if (!error) {
+      // Force page refresh to ensure clean state
+      window.location.reload();
+    }
   };
 
   return (
