@@ -77,13 +77,35 @@ const SecureDashboard = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching user profile for:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('user_tier')
         .eq('id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        // If profile doesn't exist, create it
+        if (error.code === 'PGRST116') {
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              name: user.user_metadata?.name || user.user_metadata?.full_name,
+              email: user.email,
+              picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
+              user_tier: 'freemium'
+            });
+          
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+          } else {
+            setUserTier('freemium');
+          }
+        }
+        return;
+      }
       
       const tier = data?.user_tier;
       console.log("User tier fetched:", tier);

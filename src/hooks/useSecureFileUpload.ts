@@ -30,6 +30,8 @@ export const useSecureFileUpload = () => {
   const handleFilesValidation = (files: File[]) => {
     if (files.length === 0) return;
 
+    console.log('Validating files:', files.length);
+    
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
     const maxSize = 10 * 1024 * 1024; // 10MB
     const maxFiles = 10; // Maximum files per upload
@@ -60,6 +62,8 @@ export const useSecureFileUpload = () => {
     setProcessedData(null);
     setMergedData(null);
     
+    console.log('Files validated and set:', files.map(f => f.name));
+    
     const fileNames = files.map(f => f.name).join(", ");
     const displayText = files.length === 1 
       ? `Selected: ${files[0].name}`
@@ -81,6 +85,9 @@ export const useSecureFileUpload = () => {
       return;
     }
 
+    console.log('Starting file processing for', selectedFiles.length, 'files');
+    console.log('User:', user.id);
+    
     setIsProcessing(true);
     setUploadProgress(0);
 
@@ -94,15 +101,19 @@ export const useSecureFileUpload = () => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}-${i}.${fileExt}`;
         
+        console.log(`Uploading file ${i + 1}/${selectedFiles.length}:`, file.name, 'to', fileName);
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('receipts')
           .upload(fileName, file);
 
-        console.log(`Uploading file ${i + 1}/${selectedFiles.length}:`, file.name);
         if (uploadError) {
+          console.error('Upload error:', uploadError);
           throw uploadError;
         }
 
+        console.log('File uploaded successfully:', uploadData);
+        
         // Create database record
         const { data: fileRecord, error: dbError } = await supabase
           .from('processed_files')
@@ -117,9 +128,12 @@ export const useSecureFileUpload = () => {
           .single();
 
         if (dbError || !fileRecord) {
+          console.error('Database error:', dbError);
           throw new Error(`Failed to create file record for ${file.name}`);
         }
 
+        console.log('Database record created:', fileRecord);
+        
         fileIds.push(fileRecord.id);
         fileNames.push(fileName);
 
@@ -128,6 +142,8 @@ export const useSecureFileUpload = () => {
       }
 
       console.log('All files uploaded, starting processing...');
+      console.log('File IDs:', fileIds);
+      console.log('File names:', fileNames);
       setUploadProgress(60);
 
       // Call Edge Function for processing (bulk)
@@ -140,6 +156,7 @@ export const useSecureFileUpload = () => {
         });
 
       if (functionError) {
+        console.error('Function error:', functionError);
         // Check if it's a usage limit error
         if (functionError.message?.includes('USAGE_LIMIT_EXCEEDED')) {
           const errorData = JSON.parse(functionError.message);
@@ -153,6 +170,7 @@ export const useSecureFileUpload = () => {
         throw functionError;
       }
 
+      console.log('Processing completed:', functionData);
       setUploadProgress(100);
       setProcessedData(functionData.receipts);
       setMergedData(functionData.mergedData);

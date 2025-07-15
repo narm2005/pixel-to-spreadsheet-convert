@@ -77,6 +77,8 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
     if (wouldExceedLimit) {
       return;
     }
+    console.log('Processing files:', selectedFiles.length);
+    console.log('Selected for processing:', selectedForProcessing.size);
     onProcessFile();
   };
 

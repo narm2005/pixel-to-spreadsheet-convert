@@ -30,15 +30,26 @@ const PremiumGate: React.FC<PremiumGateProps> = ({
 
   const fetchUserTier = async () => {
     try {
+      console.log('PremiumGate: Fetching user tier for:', user?.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('user_tier')
         .eq('id', user?.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('PremiumGate: Error fetching user tier:', error);
+        if (error.code !== 'PGRST116') {
+          throw error;
+        }
+        // Profile doesn't exist, default to freemium
+        setUserTier('freemium');
+        return;
+      }
       
       const tier = data?.user_tier;
+      console.log('PremiumGate: User tier fetched:', tier);
       if (tier === 'premium' || tier === 'freemium') {
         setUserTier(tier);
       }
