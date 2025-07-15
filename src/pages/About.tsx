@@ -24,7 +24,7 @@ const About = () => {
     if (!error) {
       navigate("/");
     }
-  };</parameter>
+  };
 
   const values = [
     {
