@@ -13,9 +13,17 @@ const Analytics = () => {
   useEffect(() => {
     console.log("Coming to Analytics:", user);
     console.log("Loading state:", loading);
+    console.log("User ID:", user?.id);
+    console.log("User email:", user?.email);
+    
     if (!loading && !user) {
+      console.log("No user found, redirecting to signin");
       navigate("/signin");
       return;
+    }
+    
+    if (user) {
+      console.log("User found in Analytics page, ready to load analytics");
     }
   }, [user, loading, navigate]);
 

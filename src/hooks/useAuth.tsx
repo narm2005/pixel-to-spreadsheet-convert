@@ -167,6 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 name: session.user.user_metadata?.name || session.user.user_metadata?.full_name,
                 email: session.user.email,
                 picture: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url,
+                user_tier: 'freemium', // Set default tier
                 updated_at: new Date().toISOString()
               }, {
                 onConflict: 'id'
@@ -176,6 +177,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.error('Error updating profile:', profileError);
             } else {
               console.log('Profile updated successfully');
+              
+              // Check for existing subscription to update tier
+              const { data: subscription } = await supabase
+                .from('subscribers')
+                .select('subscribed, subscription_tier')
+                .eq('user_id', session.user.id)
+                .eq('subscribed', true)
+                .single();
+              
+              if (subscription && subscription.subscribed) {
+                console.log('Found active subscription, updating tier to premium');
+                await supabase
+                  .from('profiles')
+                  .update({ 
+                    user_tier: 'premium',
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', session.user.id);
+              }
             }
 
             // Only show toast if not already shown during OAuth callback

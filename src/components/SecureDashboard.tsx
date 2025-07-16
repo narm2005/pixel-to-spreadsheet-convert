@@ -78,6 +78,8 @@ const SecureDashboard = () => {
 
     try {
       console.log('Fetching user profile for:', user.id);
+      
+      // First check if profile exists
       const { data, error } = await supabase
         .from('profiles')
         .select('user_tier')
@@ -88,6 +90,7 @@ const SecureDashboard = () => {
         console.error('Error fetching user profile:', error);
         // If profile doesn't exist, create it
         if (error.code === 'PGRST116') {
+          console.log('Profile not found, creating new profile');
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
@@ -101,8 +104,11 @@ const SecureDashboard = () => {
           if (insertError) {
             console.error('Error creating profile:', insertError);
           } else {
+            console.log('Profile created successfully with freemium tier');
             setUserTier('freemium');
-          }
+            
+            // Check for existing subscription after profile creation
+            await checkAndUpdateSubscription();
         }
         return;
       }
@@ -112,14 +118,70 @@ const SecureDashboard = () => {
       if (tier === 'premium' || tier === 'freemium') {
         setUserTier(tier);
       } else {
+        console.log('Invalid tier found, defaulting to freemium');
         setUserTier('freemium');
       }
+      
+      // Always check subscription status to ensure tier is up to date
+      await checkAndUpdateSubscription();
     } catch (error: any) {
       console.error('Error fetching user profile:', error);
       setUserTier('freemium');
     }
   };
 
+  const checkAndUpdateSubscription = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Checking subscription status for user:', user.id);
+      
+      const { data: subscription, error } = await supabase
+        .from('subscribers')
+        .select('subscribed, subscription_tier, subscription_end')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching subscription:', error);
+        return;
+      }
+      
+      if (subscription) {
+        console.log('Subscription found:', subscription);
+        
+        const isActive = subscription.subscribed && 
+          (!subscription.subscription_end || new Date(subscription.subscription_end) > new Date());
+        
+        const newTier = isActive ? 'premium' : 'freemium';
+        console.log('Calculated tier based on subscription:', newTier);
+        
+        if (newTier !== userTier) {
+          console.log('Updating user tier from', userTier, 'to', newTier);
+          
+          // Update profile with correct tier
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ 
+              user_tier: newTier,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+          
+          if (updateError) {
+            console.error('Error updating user tier:', updateError);
+          } else {
+            setUserTier(newTier);
+            console.log('User tier updated successfully to:', newTier);
+          }
+        }
+      } else {
+        console.log('No subscription found, user remains freemium');
+      }
+    } catch (error: any) {
+      console.error('Error checking subscription:', error);
+    }
+  };
   const fetchUserFileCount = async () => {
     if (!user) return;
 

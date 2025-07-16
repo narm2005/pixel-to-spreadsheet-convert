@@ -28,6 +28,12 @@ const ExpenseAnalytics = () => {
     try {
       console.log('Fetching analytics for user:', user?.id);
       
+      if (!user?.id) {
+        console.error('No user ID available for analytics');
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('expense_analytics')
         .select('*')
@@ -46,6 +52,8 @@ const ExpenseAnalytics = () => {
       if (!data || data.length === 0) {
         console.log('No analytics data found, checking processed files...');
         await generateAnalyticsFromProcessedFiles();
+      } else {
+        console.log('Analytics data loaded successfully:', data.length, 'records');
       }
     } catch (error: any) {
       console.error('Error in fetchAnalytics:', error);
@@ -60,7 +68,14 @@ const ExpenseAnalytics = () => {
   };
   
   const generateAnalyticsFromProcessedFiles = async () => {
+    if (!user?.id) {
+      console.error('No user ID available for generating analytics');
+      return;
+    }
+    
     try {
+      console.log('Generating analytics from processed files for user:', user.id);
+      
       const { data: processedFiles, error } = await supabase
         .from('processed_files')
         .select('*')
@@ -80,11 +95,15 @@ const ExpenseAnalytics = () => {
         const analyticsMap = new Map();
 
         processedFiles.forEach(file => {
-          const data = file.processed_data;
+          const data = file.processed_data as any;
+          console.log('Processing file data:', file.id, data);
+          
           if (data && data.total && data.category && data.date) {
             const monthYear = data.date.substring(0, 7); // YYYY-MM format
             const category = data.category || 'uncategorized';
             const amount = parseFloat(data.total) || 0;
+            
+            console.log('Extracted data:', { monthYear, category, amount });
             
             const key = `${monthYear}-${category}`;
             
@@ -100,6 +119,12 @@ const ExpenseAnalytics = () => {
                 transaction_count: 1
               });
             }
+          } else {
+            console.log('Skipping file due to missing data:', file.id, {
+              hasTotal: !!data?.total,
+              hasCategory: !!data?.category,
+              hasDate: !!data?.date
+            });
           }
         });
 
@@ -108,7 +133,32 @@ const ExpenseAnalytics = () => {
         
         if (generatedAnalytics.length > 0) {
           setAnalyticsData(generatedAnalytics);
+          
+          // Optionally save generated analytics to database for future use
+          try {
+            const { error: insertError } = await supabase
+              .from('expense_analytics')
+              .upsert(
+                generatedAnalytics.map(item => ({
+                  ...item,
+                  user_id: user.id
+                })),
+                { onConflict: 'user_id,month_year,category' }
+              );
+            
+            if (insertError) {
+              console.error('Error saving generated analytics:', insertError);
+            } else {
+              console.log('Generated analytics saved to database');
+            }
+          } catch (saveError) {
+            console.error('Error saving analytics:', saveError);
+          }
+        } else {
+          console.log('No valid data found in processed files for analytics');
         }
+      } else {
+        console.log('No processed files found for analytics generation');
       }
     } catch (error) {
       console.error('Error generating analytics from processed files:', error);

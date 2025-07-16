@@ -32,6 +32,13 @@ const PremiumGate: React.FC<PremiumGateProps> = ({
     try {
       console.log('PremiumGate: Fetching user tier for:', user?.id);
       
+      if (!user?.id) {
+        console.error('PremiumGate: No user ID available');
+        setUserTier('freemium');
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('user_tier')
@@ -44,6 +51,7 @@ const PremiumGate: React.FC<PremiumGateProps> = ({
           throw error;
         }
         // Profile doesn't exist, default to freemium
+        console.log('PremiumGate: Profile not found, defaulting to freemium');
         setUserTier('freemium');
         return;
       }
@@ -52,6 +60,30 @@ const PremiumGate: React.FC<PremiumGateProps> = ({
       console.log('PremiumGate: User tier fetched:', tier);
       if (tier === 'premium' || tier === 'freemium') {
         setUserTier(tier);
+      } else {
+        console.log('PremiumGate: Invalid tier, defaulting to freemium');
+        setUserTier('freemium');
+      }
+      
+      // Also check subscription status for real-time tier verification
+      const { data: subscription } = await supabase
+        .from('subscribers')
+        .select('subscribed, subscription_end')
+        .eq('user_id', user.id)
+        .eq('subscribed', true)
+        .single();
+      
+      if (subscription) {
+        const isActive = !subscription.subscription_end || 
+          new Date(subscription.subscription_end) > new Date();
+        
+        if (isActive && tier !== 'premium') {
+          console.log('PremiumGate: Found active subscription, user should be premium');
+          setUserTier('premium');
+        } else if (!isActive && tier === 'premium') {
+          console.log('PremiumGate: Subscription expired, user should be freemium');
+          setUserTier('freemium');
+        }
       }
     } catch (error: any) {
       console.error('Error fetching user tier:', error);
