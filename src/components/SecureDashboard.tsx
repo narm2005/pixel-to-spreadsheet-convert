@@ -109,6 +109,7 @@ const SecureDashboard = () => {
             
             // Check for existing subscription after profile creation
             await checkAndUpdateSubscription();
+          }
         }
         return;
       }
@@ -182,6 +183,7 @@ const SecureDashboard = () => {
       console.error('Error checking subscription:', error);
     }
   };
+  
   const fetchUserFileCount = async () => {
     if (!user) return;
 
