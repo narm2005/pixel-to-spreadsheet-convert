@@ -11,18 +11,46 @@ serve(async (req)=>{
       headers: corsHeaders
     });
   }
+
+  console.log('📤 Export-merged-data function called')
+  console.log('📝 Request method:', req.method)
+
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    console.log('✅ Supabase client created for export')
+
     const { mergedData, format, userId } = await req.json();
+    console.log('📄 Export request payload:', { 
+      hasData: !!mergedData, 
+      format, 
+      userId,
+      itemCount: mergedData?.combinedItems?.length 
+    })
+
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '') ?? '';
+    console.log('🔑 Auth token for export:', { hasToken: !!token, tokenLength: token.length })
+
     // Verify user
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    console.log('👤 User verification for export:', { 
+      hasUser: !!user, 
+      verifiedUserId: user?.id, 
+      requestUserId: userId,
+      match: user?.id === userId,
+      authError: authError?.message 
+    })
+
     if (authError || !user || user.id !== userId) {
+      console.error('❌ Export authentication failed')
       throw new Error('Unauthorized');
     }
+
     const timestamp = new Date().toISOString().split('T')[0];
+    console.log('📅 Export timestamp:', timestamp)
+
     if (format === 'excel') {
+      console.log('📊 Generating Excel export...')
       // Create Excel workbook
       const workbook = utils.book_new();
       const worksheet = utils.aoa_to_sheet([
@@ -51,6 +79,7 @@ serve(async (req)=>{
         type: 'base64',
         bookType: 'xlsx'
       });
+      console.log('✅ Excel file generated, base64 length:', excelBase64.length)
       return new Response(excelBase64, {
         headers: {
           ...corsHeaders,
@@ -59,6 +88,7 @@ serve(async (req)=>{
         }
       });
     } else if (format === 'csv') {
+      console.log('📄 Generating CSV export...')
       // Generate CSV content
       const csvContent = [
         [
@@ -80,6 +110,7 @@ serve(async (req)=>{
             `"${item.fileName.replace(/"/g, '""')}"`
           ].join(','))
       ].join('\n');
+      console.log('✅ CSV content generated, length:', csvContent.length)
       return new Response(csvContent, {
         headers: {
           ...corsHeaders,
@@ -88,6 +119,9 @@ serve(async (req)=>{
         }
       });
     } else if (format === 'json') {
+      console.log('🔧 Generating JSON export...')
+      const jsonContent = JSON.stringify(mergedData, null, 2)
+      console.log('✅ JSON content generated, length:', jsonContent.length)
       return new Response(JSON.stringify(mergedData, null, 2), {
         headers: {
           ...corsHeaders,
@@ -96,9 +130,14 @@ serve(async (req)=>{
         }
       });
     }
+    console.error('❌ Invalid export format specified:', format)
     throw new Error('Invalid format specified');
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Fatal error in export-merged-data:', {
+      error,
+      message: error.message,
+      stack: error.stack
+    });
     return new Response(JSON.stringify({
       error: error.message
     }), {

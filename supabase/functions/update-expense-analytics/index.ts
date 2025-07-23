@@ -11,20 +11,39 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  console.log('📊 Update-expense-analytics function called')
+  console.log('📝 Request method:', req.method)
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    console.log('✅ Supabase client created for analytics')
+
     const { fileId, userId, merchant, total, category, date } = await req.json()
+    console.log('📄 Analytics request payload:', { 
+      fileId, 
+      userId, 
+      merchant, 
+      total, 
+      category, 
+      date 
+    })
 
     // Extract month-year from date
     const monthYear = date ? date.substring(0, 7) : new Date().toISOString().substring(0, 7)
     const categoryName = category || 'uncategorized'
     const amount = parseFloat(total) || 0
 
+    console.log('🔍 Processed analytics data:', { 
+      monthYear, 
+      categoryName, 
+      amount 
+    })
     // Update or insert analytics record
+    console.log('🔍 Checking for existing analytics record...')
     const { data: existingRecord, error: fetchError } = await supabase
       .from('expense_analytics')
       .select('*')
@@ -33,12 +52,19 @@ serve(async (req) => {
       .eq('category', categoryName)
       .single()
 
+    console.log('📊 Existing record check:', { 
+      hasExisting: !!existingRecord, 
+      fetchError: fetchError?.code,
+      existingId: existingRecord?.id 
+    })
     if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('❌ Error fetching existing analytics record:', fetchError)
       throw fetchError
     }
 
     if (existingRecord) {
       // Update existing record
+      console.log('🔄 Updating existing analytics record:', existingRecord.id)
       const { error: updateError } = await supabase
         .from('expense_analytics')
         .update({
@@ -48,9 +74,14 @@ serve(async (req) => {
         })
         .eq('id', existingRecord.id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('❌ Error updating analytics record:', updateError)
+        throw updateError
+      }
+      console.log('✅ Analytics record updated successfully')
     } else {
       // Insert new record
+      console.log('➕ Creating new analytics record')
       const { error: insertError } = await supabase
         .from('expense_analytics')
         .insert({
@@ -61,8 +92,14 @@ serve(async (req) => {
           transaction_count: 1
         })
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error('❌ Error inserting analytics record:', insertError)
+        throw insertError
+      }
+      console.log('✅ New analytics record created successfully')
     }
+
+    console.log('🎉 Analytics update completed successfully')
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -73,7 +110,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error updating analytics:', error)
+    console.error('❌ Fatal error in update-expense-analytics:', {
+      error,
+      message: error.message,
+      stack: error.stack
+    })
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

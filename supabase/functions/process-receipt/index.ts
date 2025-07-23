@@ -11,33 +11,52 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  console.log('🚀 Process-receipt function called')
+  console.log('📝 Request method:', req.method)
+  console.log('📝 Request headers:', Object.fromEntries(req.headers.entries()))
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    console.log('✅ Supabase client created')
+
     const { fileIds, fileNames } = await req.json()
+    console.log('📄 Request payload:', { fileIds, fileNames })
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
+    console.log('🔑 Auth token length:', token?.length || 0)
 
     // Verify the user
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    console.log('👤 User verification:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      userEmail: user?.email,
+      authError: authError?.message 
+    })
+    
     if (authError || !user) {
+      console.error('❌ Authentication failed:', authError)
       throw new Error('Unauthorized')
     }
 
     // Check if user can upload these files (pricing logic)
     const fileCount = Array.isArray(fileIds) ? fileIds.length : 1
+    console.log('📊 Checking upload permission for:', { userId: user.id, fileCount })
+    
     const { data: canUpload, error: checkError } = await supabase.rpc('can_user_upload', {
       user_uuid: user.id,
       new_file_count: fileCount
     })
 
+    console.log('🔍 Upload permission check result:', { canUpload, checkError })
     if (checkError) {
-      console.error('Error checking upload permission:', checkError)
+      console.error('❌ Error checking upload permission:', checkError)
       throw new Error('Failed to check upload permission')
     }
 
@@ -46,6 +65,8 @@ serve(async (req) => {
       const { data: currentCount } = await supabase.rpc('get_user_file_count', {
         user_uuid: user.id
       })
+
+      console.log('❌ Upload limit exceeded:', { currentCount, newFiles: fileCount })
 
       return new Response(
         JSON.stringify({ 
@@ -60,30 +81,41 @@ serve(async (req) => {
       )
     }
 
+    console.log('✅ Upload permission granted, starting file processing...')
+
     // Process files (handle both single file and bulk upload)
     const processedResults = []
     const fileIdsArray = Array.isArray(fileIds) ? fileIds : [fileIds]
     const fileNamesArray = Array.isArray(fileNames) ? fileNames : [fileNames]
 
+    console.log('📁 Processing files:', { 
+      totalFiles: fileIdsArray.length,
+      fileIds: fileIdsArray,
+      fileNames: fileNamesArray 
+    })
     for (let i = 0; i < fileIdsArray.length; i++) {
       const fileId = fileIdsArray[i]
       const fileName = fileNamesArray[i]
 
-      console.log(`Processing file ${i + 1}/${fileIdsArray.length}: ${fileName}`)
+      console.log(`📄 Processing file ${i + 1}/${fileIdsArray.length}:`, { fileId, fileName })
 
       // Download file from storage
+      console.log('📥 Downloading file from storage:', fileName)
       const { data: fileData, error: downloadError } = await supabase.storage
         .from('receipts')
         .download(fileName)
 
       if (downloadError) {
-        console.error(`Error downloading file ${fileName}:`, downloadError)
+        console.error(`❌ Error downloading file ${fileName}:`, downloadError)
         throw new Error(`Failed to download file: ${fileName}`)
       }
+
+      console.log('✅ File downloaded successfully:', { fileName, size: fileData.size })
 
       // Convert file to base64 for processing
       const arrayBuffer = await fileData.arrayBuffer()
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+      console.log('🔄 File converted to base64:', { fileName, base64Length: base64.length })
 
       // Mock processing with category detection
       const categories = ['groceries', 'restaurants', 'gas', 'shopping', 'travel', 'healthcare', 'entertainment']
@@ -104,9 +136,11 @@ serve(async (req) => {
         ]
       }
 
+      console.log('🎯 Generated mock processed data:', mockProcessedData)
       processedResults.push(mockProcessedData)
 
       // Update the database record
+      console.log('💾 Updating database record:', fileId)
       const { error: updateError } = await supabase
         .from('processed_files')
         .update({
@@ -123,19 +157,27 @@ serve(async (req) => {
         .eq('user_id', user.id)
 
       if (updateError) {
-        console.error(`Error updating file record ${fileId}:`, updateError)
+        console.error(`❌ Error updating file record ${fileId}:`, updateError)
         throw new Error(`Failed to update file record: ${fileId}`)
       }
 
+      console.log('✅ Database record updated successfully:', fileId)
+
       // Update expense analytics for premium users
       try {
+        console.log('📊 Checking user tier for analytics update...')
         const { data: userProfile } = await supabase
           .from('profiles')
           .select('user_tier')
           .eq('id', user.id)
           .single()
 
+        console.log('👤 User profile for analytics:', { 
+          userId: user.id, 
+          userTier: userProfile?.user_tier 
+        })
         if (userProfile?.user_tier === 'premium') {
+          console.log('💎 Premium user detected, updating analytics...')
           await supabase.functions.invoke('update-expense-analytics', {
             body: {
               fileId: fileId,
@@ -146,14 +188,18 @@ serve(async (req) => {
               date: mockProcessedData.date
             }
           })
+          console.log('✅ Analytics update function called')
+        } else {
+          console.log('👤 Freemium user, skipping analytics update')
         }
       } catch (analyticsError) {
-        console.error('Error updating analytics:', analyticsError)
+        console.error('❌ Error updating analytics:', analyticsError)
         // Don't fail the main process for analytics errors
       }
     }
 
     // Log the upload count
+    console.log('📝 Logging upload count...')
     const { error: logError } = await supabase
       .from('upload_logs')
       .insert({
@@ -162,8 +208,10 @@ serve(async (req) => {
       })
 
     if (logError) {
-      console.error('Error logging upload:', logError)
+      console.error('❌ Error logging upload:', logError)
       // Don't throw here, just log the error
+    } else {
+      console.log('✅ Upload logged successfully')
     }
 
     // Create merged output data
@@ -188,7 +236,12 @@ serve(async (req) => {
       )
     }
 
-    console.log(`Successfully processed ${fileCount} files for user ${user.id}`)
+    console.log('🎉 Processing completed successfully:', {
+      userId: user.id,
+      fileCount,
+      processedResults: processedResults.length,
+      mergedDataSummary: mergedData.summary
+    })
 
     return new Response(
       JSON.stringify({ 
@@ -202,7 +255,11 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('Error processing receipt:', error)
+    console.error('❌ Fatal error in process-receipt function:', {
+      error,
+      message: error.message,
+      stack: error.stack
+    })
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

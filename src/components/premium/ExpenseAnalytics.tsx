@@ -19,20 +19,36 @@ const ExpenseAnalytics = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🔍 ExpenseAnalytics mounted, user:', user?.id);
     if (user) {
       fetchAnalytics();
+    } else {
+      console.log('❌ No user found in ExpenseAnalytics');
+      setLoading(false);
     }
   }, [user]);
 
   const fetchAnalytics = async () => {
     try {
-      console.log('Fetching analytics for user:', user?.id);
+      console.log('📊 Fetching analytics for user:', {
+        userId: user?.id,
+        userEmail: user?.email,
+        hasUser: !!user
+      });
       
       if (!user?.id) {
-        console.error('No user ID available for analytics');
+        console.error('❌ No user ID available for analytics');
         setLoading(false);
         return;
       }
+      
+      // Check current session
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔑 Current session for analytics:', {
+        hasSession: !!session,
+        sessionUserId: session?.user?.id,
+        matchesUser: session?.user?.id === user.id
+      });
       
       const { data, error } = await supabase
         .from('expense_analytics')
@@ -41,22 +57,36 @@ const ExpenseAnalytics = () => {
         .order('month_year', { ascending: false });
 
       if (error) {
-        console.error('Analytics fetch error:', error);
+        console.error('❌ Analytics fetch error:', {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
       
-      console.log('Analytics data fetched:', data);
+      console.log('✅ Analytics data fetched:', {
+        recordCount: data?.length || 0,
+        data: data?.slice(0, 3) // Show first 3 records for debugging
+      });
+      
       setAnalyticsData(data || []);
       
       // If no analytics data, check if we have processed files to generate analytics from
       if (!data || data.length === 0) {
-        console.log('No analytics data found, checking processed files...');
+        console.log('📝 No analytics data found, checking processed files...');
         await generateAnalyticsFromProcessedFiles();
       } else {
-        console.log('Analytics data loaded successfully:', data.length, 'records');
+        console.log('✅ Analytics data loaded successfully:', data.length, 'records');
       }
     } catch (error: any) {
-      console.error('Error in fetchAnalytics:', error);
+      console.error('❌ Error in fetchAnalytics:', {
+        error,
+        message: error.message,
+        stack: error.stack
+      });
       toast({
         title: "Error loading analytics",
         description: error.message,
@@ -69,12 +99,12 @@ const ExpenseAnalytics = () => {
   
   const generateAnalyticsFromProcessedFiles = async () => {
     if (!user?.id) {
-      console.error('No user ID available for generating analytics');
+      console.error('❌ No user ID available for generating analytics');
       return;
     }
     
     try {
-      console.log('Generating analytics from processed files for user:', user.id);
+      console.log('🔄 Generating analytics from processed files for user:', user.id);
       
       const { data: processedFiles, error } = await supabase
         .from('processed_files')
@@ -84,11 +114,24 @@ const ExpenseAnalytics = () => {
         .not('processed_data', 'is', null);
 
       if (error) {
-        console.error('Error fetching processed files:', error);
+        console.error('❌ Error fetching processed files for analytics:', {
+          error,
+          message: error.message,
+          userId: user.id
+        });
         return;
       }
 
-      console.log('Processed files for analytics:', processedFiles);
+      console.log('📄 Processed files for analytics:', {
+        fileCount: processedFiles?.length || 0,
+        files: processedFiles?.map(f => ({
+          id: f.id,
+          status: f.status,
+          hasData: !!f.processed_data,
+          merchant: f.merchant,
+          total: f.total
+        }))
+      });
 
       if (processedFiles && processedFiles.length > 0) {
         // Generate analytics from processed files
@@ -96,14 +139,27 @@ const ExpenseAnalytics = () => {
 
         processedFiles.forEach(file => {
           const data = file.processed_data as any;
-          console.log('Processing file data:', file.id, data);
+          console.log('🔍 Processing file data for analytics:', {
+            fileId: file.id,
+            hasProcessedData: !!data,
+            dataKeys: data ? Object.keys(data) : [],
+            merchant: data?.merchant,
+            total: data?.total,
+            category: data?.category,
+            date: data?.date
+          });
           
           if (data && data.total && data.category && data.date) {
             const monthYear = data.date.substring(0, 7); // YYYY-MM format
             const category = data.category || 'uncategorized';
             const amount = parseFloat(data.total) || 0;
             
-            console.log('Extracted data:', { monthYear, category, amount });
+            console.log('✅ Extracted analytics data:', { 
+              fileId: file.id,
+              monthYear, 
+              category, 
+              amount 
+            });
             
             const key = `${monthYear}-${category}`;
             
@@ -120,22 +176,28 @@ const ExpenseAnalytics = () => {
               });
             }
           } else {
-            console.log('Skipping file due to missing data:', file.id, {
+            console.log('⚠️ Skipping file due to missing data:', {
+              fileId: file.id,
               hasTotal: !!data?.total,
               hasCategory: !!data?.category,
-              hasDate: !!data?.date
+              hasDate: !!data?.date,
+              actualData: data
             });
           }
         });
 
         const generatedAnalytics = Array.from(analyticsMap.values());
-        console.log('Generated analytics:', generatedAnalytics);
+        console.log('📊 Generated analytics:', {
+          recordCount: generatedAnalytics.length,
+          analytics: generatedAnalytics
+        });
         
         if (generatedAnalytics.length > 0) {
           setAnalyticsData(generatedAnalytics);
           
           // Optionally save generated analytics to database for future use
           try {
+            console.log('💾 Saving generated analytics to database...');
             const { error: insertError } = await supabase
               .from('expense_analytics')
               .upsert(
@@ -147,21 +209,21 @@ const ExpenseAnalytics = () => {
               );
             
             if (insertError) {
-              console.error('Error saving generated analytics:', insertError);
+              console.error('❌ Error saving generated analytics:', insertError);
             } else {
-              console.log('Generated analytics saved to database');
+              console.log('✅ Generated analytics saved to database');
             }
           } catch (saveError) {
-            console.error('Error saving analytics:', saveError);
+            console.error('❌ Error saving analytics:', saveError);
           }
         } else {
-          console.log('No valid data found in processed files for analytics');
+          console.log('⚠️ No valid data found in processed files for analytics');
         }
       } else {
-        console.log('No processed files found for analytics generation');
+        console.log('⚠️ No processed files found for analytics generation');
       }
     } catch (error) {
-      console.error('Error generating analytics from processed files:', error);
+      console.error('❌ Error generating analytics from processed files:', error);
     }
   };
 

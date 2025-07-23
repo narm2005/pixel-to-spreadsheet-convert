@@ -18,25 +18,28 @@ export const useSecureFileUpload = () => {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    console.log('🔍 Files selected:', files.length, files.map(f => f.name));
     handleFilesValidation(files);
   };
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const files = Array.from(event.dataTransfer.files || []);
+    console.log('🔍 Files dropped:', files.length, files.map(f => f.name));
     handleFilesValidation(files);
   };
 
   const handleFilesValidation = (files: File[]) => {
     if (files.length === 0) return;
 
-    console.log('Validating files:', files.length);
+    console.log('🔍 Validating files:', files.length);
     
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
     const maxSize = 10 * 1024 * 1024; // 10MB
     const maxFiles = 10; // Maximum files per upload
 
     if (files.length > maxFiles) {
+      console.log('❌ Too many files:', files.length, 'max:', maxFiles);
       toast({
         title: "Too many files",
         description: `Please select no more than ${maxFiles} files at once.`,
@@ -50,6 +53,7 @@ export const useSecureFileUpload = () => {
     );
 
     if (invalidFiles.length > 0) {
+      console.log('❌ Invalid files:', invalidFiles.map(f => ({ name: f.name, type: f.type, size: f.size })));
       toast({
         title: "Invalid files",
         description: `${invalidFiles.length} file(s) are invalid. Please ensure all files are images (PNG, JPG, JPEG, GIF, BMP, WebP) or PDF files under 10MB.`,
@@ -62,7 +66,7 @@ export const useSecureFileUpload = () => {
     setProcessedData(null);
     setMergedData(null);
     
-    console.log('Files validated and set:', files.map(f => f.name));
+    console.log('✅ Files validated and set:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
     
     const fileNames = files.map(f => f.name).join(", ");
     const displayText = files.length === 1 
@@ -77,6 +81,11 @@ export const useSecureFileUpload = () => {
 
   const handleProcessFile = async () => {
     if (selectedFiles.length === 0 || !user) {
+      console.log('❌ Cannot process files:', { 
+        filesCount: selectedFiles.length, 
+        hasUser: !!user,
+        userId: user?.id 
+      });
       toast({
         title: "Authentication required",
         description: "Please sign in to process files.",
@@ -85,8 +94,12 @@ export const useSecureFileUpload = () => {
       return;
     }
 
-    console.log('Starting file processing for', selectedFiles.length, 'files');
-    console.log('User:', user.id);
+    console.log('🚀 Starting file processing:', {
+      fileCount: selectedFiles.length,
+      userId: user.id,
+      userEmail: user.email,
+      files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
+    });
     
     setIsProcessing(true);
     setUploadProgress(0);
@@ -101,18 +114,27 @@ export const useSecureFileUpload = () => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}-${i}.${fileExt}`;
         
-        console.log(`Uploading file ${i + 1}/${selectedFiles.length}:`, file.name, 'to', fileName);
+        console.log(`📤 Uploading file ${i + 1}/${selectedFiles.length}:`, {
+          originalName: file.name,
+          storagePath: fileName,
+          size: file.size,
+          type: file.type
+        });
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('receipts')
           .upload(fileName, file);
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
+          console.error('❌ Upload error for file:', file.name, uploadError);
           throw uploadError;
         }
 
-        console.log('File uploaded successfully:', uploadData);
+        console.log('✅ File uploaded successfully:', {
+          originalName: file.name,
+          storagePath: uploadData.path,
+          fullPath: uploadData.fullPath
+        });
         
         // Create database record
         const { data: fileRecord, error: dbError } = await supabase
@@ -128,11 +150,15 @@ export const useSecureFileUpload = () => {
           .single();
 
         if (dbError || !fileRecord) {
-          console.error('Database error:', dbError);
+          console.error('❌ Database error for file:', file.name, dbError);
           throw new Error(`Failed to create file record for ${file.name}`);
         }
 
-        console.log('Database record created:', fileRecord);
+        console.log('✅ Database record created:', {
+          fileId: fileRecord.id,
+          fileName: fileRecord.file_name,
+          status: fileRecord.status
+        });
         
         fileIds.push(fileRecord.id);
         fileNames.push(fileName);
@@ -141,25 +167,53 @@ export const useSecureFileUpload = () => {
         setUploadProgress(((i + 1) / selectedFiles.length) * 50);
       }
 
-      console.log('All files uploaded, starting processing...');
-      console.log('File IDs:', fileIds);
-      console.log('File names:', fileNames);
+      console.log('✅ All files uploaded, starting processing...', {
+        fileIds,
+        fileNames,
+        totalFiles: fileIds.length
+      });
       setUploadProgress(60);
 
+      // Get current session token for debugging
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔑 Current session:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        userId: session?.user?.id,
+        tokenLength: session?.access_token?.length
+      });
+
       // Call Edge Function for processing (bulk)
+      console.log('📞 Calling process-receipt edge function...');
       const { data: functionData, error: functionError } = await supabase.functions
         .invoke('process-receipt', {
           body: { 
             fileIds: fileIds,
             fileNames: fileNames
+          },
+          headers: {
+            'Content-Type': 'application/json'
           }
         });
 
       if (functionError) {
-        console.error('Function error:', functionError);
+        console.error('❌ Edge function error:', {
+          error: functionError,
+          message: functionError.message,
+          details: functionError.details,
+          hint: functionError.hint,
+          code: functionError.code
+        });
+        
         // Check if it's a usage limit error
-        if (functionError.message?.includes('USAGE_LIMIT_EXCEEDED')) {
-          const errorData = JSON.parse(functionError.message);
+        if (functionError.message?.includes('USAGE_LIMIT_EXCEEDED') || 
+            functionError.details?.includes('USAGE_LIMIT_EXCEEDED')) {
+          let errorData;
+          try {
+            errorData = JSON.parse(functionError.message || functionError.details || '{}');
+          } catch {
+            errorData = { message: 'Usage limit exceeded' };
+          }
           toast({
             title: "Usage Limit Reached",
             description: errorData.message,
@@ -170,7 +224,12 @@ export const useSecureFileUpload = () => {
         throw functionError;
       }
 
-      console.log('Processing completed:', functionData);
+      console.log('✅ Processing completed successfully:', {
+        receiptsCount: functionData?.receipts?.length,
+        hasMergedData: !!functionData?.mergedData,
+        summary: functionData?.summary
+      });
+      
       setUploadProgress(100);
       setProcessedData(functionData.receipts);
       setMergedData(functionData.mergedData);
@@ -182,7 +241,12 @@ export const useSecureFileUpload = () => {
       });
 
     } catch (error: any) {
-      console.error('File processing error:', error);
+      console.error('❌ File processing error:', {
+        error: error,
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       toast({
         title: "Processing failed",
         description: error.message || "An error occurred while processing the files.",
@@ -195,6 +259,7 @@ export const useSecureFileUpload = () => {
 
   const handleExport = async (format: 'excel' | 'csv' | 'json', exportData: any) => {
     if (!exportData || !user) {
+      console.log('❌ Cannot export:', { hasData: !!exportData, hasUser: !!user });
       toast({
         title: "Missing data",
         description: "Please process your files before exporting.",
@@ -202,8 +267,17 @@ export const useSecureFileUpload = () => {
       });
       return;
     }
-    console.log('Exporting data:', exportData);
+    
+    console.log('📤 Starting export:', {
+      format,
+      userId: user.id,
+      dataType: typeof exportData,
+      hasItems: !!exportData?.combinedItems,
+      itemCount: exportData?.combinedItems?.length
+    });
+    
     if ((format === 'excel' || format === 'json') && user.tier === 'freemium') {
+      console.log('❌ Premium feature blocked for freemium user');
       toast({
         title: "Premium Feature",
         description: "Excel and JSON exports are available for Premium users only.",
@@ -211,15 +285,10 @@ export const useSecureFileUpload = () => {
       });
       return;
     }
-    // setIsProcessing(true);
-    // setUploadProgress(0);
-    // console.log('Preparing to export data in format:', format);
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    console.log('Export timestamp:', timestamp);
-    console.log('User ID for export:', user.id);
-    console.log('Exporting merged data:', exportData);  
    
-try {
+    try {
+      console.log('📞 Calling export-merged-data edge function...');
+      
     const { data, error } = await supabase.functions.invoke(
       'export-merged-data',
       {
@@ -227,13 +296,19 @@ try {
           mergedData: exportData,
           format,
           userId: user.id
+        },
+        headers: {
+          'Content-Type': 'application/json'
         }
       }
     );
 
     if (error) {
+      console.error('❌ Export function error:', error);
       throw new Error(error.message || 'Export failed');
     }
+
+    console.log('✅ Export function completed:', { format, dataReceived: !!data });
 
     let blob, filename;
     
@@ -270,18 +345,20 @@ try {
       document.body.removeChild(a);
     }, 100);
 
+    console.log('✅ Download triggered:', filename);
+
     toast({
       title: `Exported as ${format.toUpperCase()}`,
       description: 'Download started successfully',
     });
 
   } catch (error) {
+    console.error('❌ Export error:', error);
     toast({
       title: 'Export failed',
       description: error.message,
       variant: 'destructive'
     });
-    console.error('Export error:', error);
   }
 
 };
