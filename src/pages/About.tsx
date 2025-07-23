@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Target, 
@@ -18,11 +19,10 @@ const About = () => {
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    // Import signOut from useAuth
     const { signOut } = useAuth();
     const { error } = await signOut();
     if (!error) {
-      navigate("/");
+      window.location.href = "/";
     }
   };
 
