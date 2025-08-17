@@ -77,8 +77,21 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
     if (wouldExceedLimit) {
       return;
     }
-    console.log('Processing files:', selectedFiles.length);
-    console.log('Selected for processing:', selectedForProcessing.size);
+    console.log('🔄 FileUploadSection: Processing wrapper called');
+    console.log('📊 Processing state:', {
+      totalFiles: selectedFiles.length,
+      selectedCount: selectedForProcessing.size,
+      wouldExceedLimit,
+      canUpload,
+      userTier,
+      fileCount
+    });
+    
+    if (selectedForProcessing.size === 0) {
+      console.log('❌ No files selected for processing');
+      return;
+    }
+    
     onProcessFile();
   };
 

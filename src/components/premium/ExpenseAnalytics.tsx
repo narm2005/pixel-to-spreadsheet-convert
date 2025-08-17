@@ -43,17 +43,49 @@ const ExpenseAnalytics = () => {
       }
       
       // Check current session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       console.log('🔑 Current session for analytics:', {
         hasSession: !!session,
         sessionUserId: session?.user?.id,
-        matchesUser: session?.user?.id === user.id
+        matchesUser: session?.user?.id === user.id,
+        sessionError: sessionError?.message
       });
+      
+      if (!session) {
+        throw new Error('No active session found');
+      }
+      
+      // First, check user tier to ensure they have access
+      console.log('👤 Checking user tier for analytics access...');
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_tier')
+        .eq('id', user.id)
+        .single();
+      
+      console.log('👤 User profile for analytics:', {
+        hasProfile: !!userProfile,
+        userTier: userProfile?.user_tier,
+        profileError: profileError?.message
+      });
+      
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw new Error(`Profile fetch error: ${profileError.message}`);
+      }
+      
+      if (!userProfile || userProfile.user_tier !== 'premium') {
+        console.log('⚠️ User is not premium, analytics access restricted');
+        setAnalyticsData([]);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('💎 Premium user confirmed, fetching analytics...');
       
       const { data, error } = await supabase
         .from('expense_analytics')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('month_year', { ascending: false });
 
       if (error) {
@@ -69,7 +101,11 @@ const ExpenseAnalytics = () => {
       
       console.log('✅ Analytics data fetched:', {
         recordCount: data?.length || 0,
-        data: data?.slice(0, 3) // Show first 3 records for debugging
+        sampleData: data?.slice(0, 2).map(d => ({
+          month: d.month_year,
+          category: d.category,
+          amount: d.total_amount
+        }))
       });
       
       setAnalyticsData(data || []);
@@ -108,8 +144,8 @@ const ExpenseAnalytics = () => {
       
       const { data: processedFiles, error } = await supabase
         .from('processed_files')
-        .select('*')
-        .eq('user_id', user?.id)
+        .select('id, processed_data, merchant, total, category, created_at')
+        .eq('user_id', user.id)
         .eq('status', 'completed')
         .not('processed_data', 'is', null);
 
@@ -124,9 +160,8 @@ const ExpenseAnalytics = () => {
 
       console.log('📄 Processed files for analytics:', {
         fileCount: processedFiles?.length || 0,
-        files: processedFiles?.map(f => ({
+        sampleFiles: processedFiles?.slice(0, 2).map(f => ({
           id: f.id,
-          status: f.status,
           hasData: !!f.processed_data,
           merchant: f.merchant,
           total: f.total
@@ -135,22 +170,28 @@ const ExpenseAnalytics = () => {
 
       if (processedFiles && processedFiles.length > 0) {
         // Generate analytics from processed files
+        console.log('🔄 Processing files for analytics generation...');
         const analyticsMap = new Map();
 
         processedFiles.forEach(file => {
           const data = file.processed_data as any;
-          console.log('🔍 Processing file data for analytics:', {
+          
+          // Use file data or processed data
+          const merchant = data?.merchant || file.merchant;
+          const total = data?.total || file.total;
+          const category = data?.category || file.category || 'uncategorized';
+          const date = data?.date || file.created_at?.split('T')[0];
+          
+          console.log('🔍 Processing file for analytics:', {
             fileId: file.id,
-            hasProcessedData: !!data,
-            dataKeys: data ? Object.keys(data) : [],
-            merchant: data?.merchant,
-            total: data?.total,
-            category: data?.category,
-            date: data?.date
+            merchant,
+            total,
+            category,
+            date
           });
           
-          if (data && data.total && data.category && data.date) {
-            const monthYear = data.date.substring(0, 7); // YYYY-MM format
+          if (total && category && date) {
+            const monthYear = date.substring(0, 7); // YYYY-MM format
             const category = data.category || 'uncategorized';
             const amount = parseFloat(data.total) || 0;
             
@@ -178,10 +219,9 @@ const ExpenseAnalytics = () => {
           } else {
             console.log('⚠️ Skipping file due to missing data:', {
               fileId: file.id,
-              hasTotal: !!data?.total,
-              hasCategory: !!data?.category,
-              hasDate: !!data?.date,
-              actualData: data
+              hasTotal: !!total,
+              hasCategory: !!category,
+              hasDate: !!date
             });
           }
         });
@@ -189,7 +229,7 @@ const ExpenseAnalytics = () => {
         const generatedAnalytics = Array.from(analyticsMap.values());
         console.log('📊 Generated analytics:', {
           recordCount: generatedAnalytics.length,
-          analytics: generatedAnalytics
+          sampleAnalytics: generatedAnalytics.slice(0, 2)
         });
         
         if (generatedAnalytics.length > 0) {
