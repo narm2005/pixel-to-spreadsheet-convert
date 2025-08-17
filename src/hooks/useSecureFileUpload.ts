@@ -413,7 +413,6 @@ export const useSecureFileUpload = () => {
       if (error) {
         console.error('❌ Export function error:', error);
         throw new Error(error.message || 'Export failed');
-        }
       }
 
 
