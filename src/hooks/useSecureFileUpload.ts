@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +10,7 @@ export const useSecureFileUpload = () => {
   const [processedData, setProcessedData] = useState<any>(null);
   const [mergedData, setMergedData] = useState<any>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Backward compatibility for single file
   const selectedFile = selectedFiles.length > 0 ? selectedFiles[0] : null;
@@ -80,78 +79,204 @@ export const useSecureFileUpload = () => {
   };
 
   const handleProcessFile = async () => {
-  setIsProcessing(true);
-  console.log("🟢 handleProcessFile triggered");
+    console.log('🚀 handleProcessFile called');
+    console.log('📊 Current state:', {
+      selectedFilesCount: selectedFiles.length,
+      hasUser: !!user,
+      hasSession: !!session,
+      userId: user?.id,
+      sessionValid: !!session?.access_token
+    });
 
-  try {
-    // Get current session once
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    console.log("🔑 Session result:", session);
-
-    if (sessionError) {
-      console.error("❌ Session error:", sessionError);
-      toast({
-        title: "Session error",
-        description: sessionError.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!session?.access_token) {
-      console.warn("⚠️ No active session found");
+    if (!user || !session) {
+      console.error('❌ No user or session available');
       toast({
         title: "Authentication required",
-        description: "Please sign in again to continue.",
+        description: "Please sign in to process files.",
         variant: "destructive",
       });
       return;
     }
 
-    // Invoke Edge Function
-    console.log("📡 About to invoke Edge Function...");
-    const { data: functionData, error: functionError } = await supabase.functions
-      .invoke("process-receipt", {
-        body: {
-          fileIds: fileIds,
-          fileNames: fileNames,
-        },
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
+    if (selectedFiles.length === 0) {
+      console.error('❌ No files selected');
+      toast({
+        title: "No files selected",
+        description: "Please select files to process.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setUploadProgress(0);
+
+    try {
+      console.log('🔄 Starting file processing for:', selectedFiles.length, 'files');
+      
+      // Step 1: Upload files to storage (0-40% progress)
+      const uploadedFiles = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const progress = Math.round((i / selectedFiles.length) * 40);
+        setUploadProgress(progress);
+
+        console.log(`📤 Uploading file ${i + 1}/${selectedFiles.length}:`, {
+          originalName: file.name,
+          size: file.size,
+          type: file.type
+        });
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const fileExtension = file.name.split('.').pop();
+        const storagePath = `${user.id}/${timestamp}-${i}.${fileExtension}`;
+
+        console.log('📁 Storage path:', storagePath);
+
+        // Upload to Supabase storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('receipts')
+          .upload(storagePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('❌ Upload error for file:', file.name, uploadError);
+          throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+        }
+
+        console.log('✅ File uploaded successfully:', {
+          storagePath,
+          uploadPath: uploadData.path
+        });
+
+        // Create database record
+        const { data: dbRecord, error: dbError } = await supabase
+          .from('processed_files')
+          .insert({
+            user_id: user.id,
+            file_name: storagePath,
+            original_file_name: file.name,
+            file_size: file.size,
+            status: 'processing'
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          console.error('❌ Database error for file:', file.name, dbError);
+          throw new Error(`Failed to create record for ${file.name}: ${dbError.message}`);
+        }
+
+        console.log('✅ Database record created:', {
+          fileId: dbRecord.id,
+          fileName: dbRecord.file_name
+        });
+
+        uploadedFiles.push({
+          id: dbRecord.id,
+          fileName: storagePath,
+          originalName: file.name
+        });
+      }
+
+      console.log('✅ All files uploaded successfully:', uploadedFiles.length);
+      setUploadProgress(40);
+
+      // Step 2: Process files via edge function (40-100% progress)
+      console.log('📞 Preparing to call process-receipt edge function...');
+      console.log('📞 Edge function URL:', `${supabase.supabaseUrl}/functions/v1/process-receipt`);
+      console.log('📞 Session token available:', !!session.access_token);
+      console.log('📞 User ID:', user.id);
+
+      const fileIds = uploadedFiles.map(f => f.id);
+      const fileNames = uploadedFiles.map(f => f.fileName);
+
+      console.log('📞 Edge function payload:', {
+        fileIds,
+        fileNames,
+        fileCount: fileIds.length
       });
 
-    if (functionError) {
-      console.error("❌ Function error:", functionError);
+      setUploadProgress(50);
+
+      // Call the edge function with proper authentication
+      const { data: functionResponse, error: functionError } = await supabase.functions
+        .invoke('process-receipt', {
+          body: {
+            fileIds: fileIds,
+            fileNames: fileNames
+          },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+
+      console.log('📞 Edge function response:', {
+        hasData: !!functionResponse,
+        hasError: !!functionError,
+        errorMessage: functionError?.message,
+        responseKeys: functionResponse ? Object.keys(functionResponse) : []
+      });
+
+      if (functionError) {
+        console.error('❌ Edge function error:', functionError);
+        throw new Error(`Processing failed: ${functionError.message}`);
+      }
+
+      if (!functionResponse) {
+        console.error('❌ No response from edge function');
+        throw new Error('No response from processing service');
+      }
+
+      setUploadProgress(90);
+
+      // Handle the response
+      const { receipts, mergedData: responseMergedData, summary } = functionResponse;
+      
+      console.log('✅ Processing completed successfully:', {
+        receiptsCount: receipts?.length || 0,
+        hasMergedData: !!responseMergedData,
+        summaryKeys: summary ? Object.keys(summary) : []
+      });
+
+      setProcessedData(receipts);
+      setMergedData(responseMergedData);
+      setUploadProgress(100);
+
+      toast({
+        title: "Processing complete!",
+        description: `Successfully processed ${receipts?.length || 0} file(s).`,
+      });
+
+      // Reset progress after a delay
+      setTimeout(() => {
+        setUploadProgress(0);
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('❌ Fatal error in handleProcessFile:', {
+        error: error.message,
+        stack: error.stack,
+        selectedFiles: selectedFiles.length,
+        hasUser: !!user,
+        hasSession: !!session
+      });
+
       toast({
         title: "Processing failed",
-        description: functionError.message,
+        description: error.message || "An unexpected error occurred during processing.",
         variant: "destructive",
       });
-      return;
+
+      setUploadProgress(0);
+    } finally {
+      setIsProcessing(false);
     }
-
-    console.log("✅ Function response:", functionData);
-    toast({
-      title: "Processing complete",
-      description: "Your files have been processed successfully.",
-    });
-
-  } catch (err) {
-    console.error("❌ Unexpected error:", err);
-    toast({
-      title: "Unexpected error",
-      description: JSON.stringify(err, null, 2),
-      variant: "destructive",
-    });
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
-
+  };
 
   const handleExport = async (format: 'excel' | 'csv' | 'json', exportData: any) => {
     console.log('📤 handleExport called:', {
@@ -215,7 +340,8 @@ export const useSecureFileUpload = () => {
           userId: user.id
         },
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
         }
       });
 
@@ -230,7 +356,6 @@ export const useSecureFileUpload = () => {
         console.error('❌ Export function error:', error);
         throw new Error(error.message || 'Export failed');
       }
-
 
       console.log('✅ Export function completed:', { format, dataReceived: !!data });
 
@@ -292,7 +417,6 @@ export const useSecureFileUpload = () => {
       });
     }
   };
-
 
   return {
     selectedFile,

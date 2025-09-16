@@ -13,13 +13,19 @@ interface AnalyticsData {
 }
 
 const ExpenseAnalytics = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     console.log('🔍 ExpenseAnalytics mounted, user:', user?.id);
+    console.log('🔍 Session state:', {
+      hasSession: !!session,
+      sessionValid: !!session?.access_token,
+      userEmail: user?.email
+    });
+    
     if (user) {
       fetchAnalytics();
     } else {
@@ -43,15 +49,15 @@ const ExpenseAnalytics = () => {
       }
       
       // Check current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
       console.log('🔑 Current session for analytics:', {
-        hasSession: !!session,
-        sessionUserId: session?.user?.id,
-        matchesUser: session?.user?.id === user.id,
+        hasSession: !!currentSession,
+        sessionUserId: currentSession?.user?.id,
+        matchesUser: currentSession?.user?.id === user.id,
         sessionError: sessionError?.message
       });
       
-      if (!session) {
+      if (!currentSession) {
         throw new Error('No active session found');
       }
       

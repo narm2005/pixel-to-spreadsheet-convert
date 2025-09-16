@@ -21,6 +21,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Debug session state
+  useEffect(() => {
+    console.log('🔍 Auth state debug:', {
+      hasUser: !!user,
+      hasSession: !!session,
+      userEmail: user?.email,
+      sessionValid: !!session?.access_token,
+      loading
+    });
+  }, [user, session, loading]);
   useEffect(() => {
     // Handle OAuth callback immediately on page load
     const handleOAuthCallback = async () => {
