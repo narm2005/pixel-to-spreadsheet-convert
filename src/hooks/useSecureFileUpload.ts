@@ -81,14 +81,16 @@ export const useSecureFileUpload = () => {
 
   const handleProcessFile = async () => {
   setIsProcessing(true);
-  console.log("🚀 Starting file processing...");
+  console.log("🟢 handleProcessFile triggered");
 
   try {
-    // 🔑 Get current session once
+    // Get current session once
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
+    console.log("🔑 Session result:", session);
+
     if (sessionError) {
-      console.error("❌ Session error:", sessionError.message);
+      console.error("❌ Session error:", sessionError);
       toast({
         title: "Session error",
         description: sessionError.message,
@@ -98,7 +100,7 @@ export const useSecureFileUpload = () => {
     }
 
     if (!session?.access_token) {
-      console.error("❌ No active session found");
+      console.warn("⚠️ No active session found");
       toast({
         title: "Authentication required",
         description: "Please sign in again to continue.",
@@ -107,8 +109,8 @@ export const useSecureFileUpload = () => {
       return;
     }
 
-    // ✅ Edge Function call
-    console.log("📡 Invoking Edge Function: process-receipt...");
+    // Invoke Edge Function
+    console.log("📡 About to invoke Edge Function...");
     const { data: functionData, error: functionError } = await supabase.functions
       .invoke("process-receipt", {
         body: {
@@ -137,17 +139,18 @@ export const useSecureFileUpload = () => {
       description: "Your files have been processed successfully.",
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error("❌ Unexpected error:", err);
     toast({
       title: "Unexpected error",
-      description: err.message || "Something went wrong. Please try again.",
+      description: JSON.stringify(err, null, 2),
       variant: "destructive",
     });
   } finally {
     setIsProcessing(false);
   }
 };
+
 
 
   const handleExport = async (format: 'excel' | 'csv' | 'json', exportData: any) => {
