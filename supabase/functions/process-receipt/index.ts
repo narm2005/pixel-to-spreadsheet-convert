@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
 
     console.log('✅ Upload permission granted, starting file processing...');
 
-    // Process files (handle both single file and bulk upload)
+    // Process files using external backend API
     const processedResults = [];
     const fileIdsArray = Array.isArray(fileIds) ? fileIds : [fileIds];
     const fileNamesArray = Array.isArray(fileNames) ? fileNames : [fileNames];
@@ -194,6 +194,9 @@ Deno.serve(async (req) => {
       fileIds: fileIdsArray,
       fileNames: fileNamesArray 
     });
+
+    // Prepare files for backend processing
+    const filesPayload = [];
     
     for (let i = 0; i < fileIdsArray.length; i++) {
       const fileId = fileIdsArray[i];
@@ -238,7 +241,7 @@ Deno.serve(async (req) => {
         type: fileData.type
       });
 
-      // Convert file to base64 for processing
+      // Convert file to base64 for backend API
       console.log('🔄 Converting file to base64...');
       const arrayBuffer = await fileData.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
@@ -248,51 +251,89 @@ Deno.serve(async (req) => {
         base64Preview: base64.substring(0, 50) + '...'
       });
 
-      // Enhanced mock processing with better category detection
-      console.log('🎯 Starting mock data processing for:', fileName);
-      const categories = ['groceries', 'restaurants', 'gas', 'shopping', 'travel', 'healthcare', 'entertainment'];
+      filesPayload.push({
+        file_id: fileId,
+        file_name: fileName,
+        user_id: user.id,
+        content_base64: base64
+      });
+    }
+
+    console.log('📦 Prepared payload for backend:', {
+      filesCount: filesPayload.length,
+      backendUrl: 'https://receipt2xcl.onrender.com/process'
+    });
+
+    // Call your backend API
+    console.log('🔗 Calling external backend API...');
+    const backendResponse = await fetch("https://receipt2xcl.onrender.com/process", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        files: filesPayload
+      })
+    });
+
+    console.log('📞 Backend API response status:', {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
+      ok: backendResponse.ok
+    });
+
+    if (!backendResponse.ok) {
+      const errorText = await backendResponse.text();
+      console.error('❌ Backend API error:', {
+        status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        errorText
+      });
+      throw new Error(`Backend API error (${backendResponse.status}): ${errorText}`);
+    }
+
+    const backendData = await backendResponse.json();
+    console.log('✅ Backend API response received:', {
+      hasData: !!backendData,
+      dataKeys: backendData ? Object.keys(backendData) : [],
+      dataType: typeof backendData
+    });
+
+    // Process the backend response and update database records
+    for (let i = 0; i < fileIdsArray.length; i++) {
+      const fileId = fileIdsArray[i];
+      const fileName = fileNamesArray[i];
       
-      // Simple category detection based on filename or random
-      let detectedCategory = 'other';
-      const fileNameLower = fileName.toLowerCase();
-      if (fileNameLower.includes('grocery') || fileNameLower.includes('food')) {
-        detectedCategory = 'groceries';
-      } else if (fileNameLower.includes('gas') || fileNameLower.includes('fuel')) {
-        detectedCategory = 'gas';
-      } else if (fileNameLower.includes('restaurant') || fileNameLower.includes('cafe')) {
-        detectedCategory = 'restaurants';
-      } else {
-        detectedCategory = categories[Math.floor(Math.random() * categories.length)];
-      }
+      // Extract data for this specific file from backend response
+      // Assuming your backend returns data for each file
+      const fileResult = backendData.files?.[i] || backendData;
       
-      const totalAmount = (Math.random() * 100 + 10).toFixed(2);
-      const itemCount = Math.floor(Math.random() * 5) + 1;
-      
-      const mockProcessedData = {
-        fileId: fileId,
-        fileName: fileName,
-        merchant: `${detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1)} Store ${i + 1}`,
-        date: new Date().toISOString().split('T')[0],
-        total: totalAmount,
-        category: detectedCategory,
-        confidence_score: 0.85 + Math.random() * 0.15, // 85-100% confidence
-        items: Array.from({ length: itemCount }, (_, idx) => ({
-          description: `${detectedCategory} Item ${idx + 1}`,
-          amount: (parseFloat(totalAmount) / itemCount).toFixed(2),
-          category: detectedCategory
-        }))
+      console.log(`💾 Processing backend result for file ${i + 1}:`, {
+        fileId,
+        hasResult: !!fileResult,
+        resultKeys: fileResult ? Object.keys(fileResult) : []
+      });
+
+      const processedResult = {
+        fileId,
+        fileName,
+        merchant: fileResult.merchant || 'Unknown Merchant',
+        date: fileResult.date || new Date().toISOString().split('T')[0],
+        total: fileResult.total || '0.00',
+        items: fileResult.items || [],
+        category: fileResult.category || fileResult.items?.[0]?.category || 'uncategorized',
+        confidence_score: fileResult.confidence_score || 0.95
       };
 
-      console.log('🎯 Generated mock processed data:', {
-        fileId: mockProcessedData.fileId,
-        merchant: mockProcessedData.merchant,
-        total: mockProcessedData.total,
-        category: mockProcessedData.category,
-        itemCount: mockProcessedData.items.length,
-        confidenceScore: mockProcessedData.confidence_score
+      console.log('🎯 Processed result for database:', {
+        fileId: processedResult.fileId,
+        merchant: processedResult.merchant,
+        total: processedResult.total,
+        itemsCount: processedResult.items.length,
+        category: processedResult.category
       });
-      
-      processedResults.push(mockProcessedData);
+
+      processedResults.push(processedResult);
 
       // Update the database record
       console.log('💾 Updating database record:', fileId);
@@ -300,12 +341,12 @@ Deno.serve(async (req) => {
         .from('processed_files')
         .update({
           status: 'completed',
-          merchant: mockProcessedData.merchant,
-          total: parseFloat(mockProcessedData.total),
-          item_count: mockProcessedData.items.length,
-          category: mockProcessedData.category,
-          confidence_score: mockProcessedData.confidence_score,
-          processed_data: mockProcessedData,
+          merchant: processedResult.merchant,
+          total: parseFloat(processedResult.total),
+          item_count: processedResult.items.length,
+          category: processedResult.category,
+          confidence_score: processedResult.confidence_score,
+          processed_data: processedResult,
           updated_at: new Date().toISOString()
         })
         .eq('id', fileId)
@@ -328,10 +369,10 @@ Deno.serve(async (req) => {
             body: {
               fileId: fileId,
               userId: user.id,
-              merchant: mockProcessedData.merchant,
-              total: mockProcessedData.total,
-              category: mockProcessedData.category,
-              date: mockProcessedData.date
+              merchant: processedResult.merchant,
+              total: processedResult.total,
+              category: processedResult.category,
+              date: processedResult.date
             }
           });
           
@@ -383,9 +424,9 @@ Deno.serve(async (req) => {
           receiptNumber: receiptIndex + 1,
           merchant: result.merchant,
           date: result.date,
-          description: item.description,
-          amount: item.amount,
-          category: item.category,
+          description: item.description || item.name || 'Unknown Item',
+          amount: item.amount || item.price || '0.00',
+          category: item.category || result.category || 'uncategorized',
           fileName: result.fileName
         }))
       )
@@ -397,7 +438,8 @@ Deno.serve(async (req) => {
       processedResults: processedResults.length,
       mergedDataSummary: mergedData.summary,
       totalAmount: mergedData.summary.totalAmount,
-      totalItems: mergedData.summary.totalItems
+      totalItems: mergedData.summary.totalItems,
+      backendUsed: 'https://receipt2xcl.onrender.com/process'
     });
 
     const responseData = { 
