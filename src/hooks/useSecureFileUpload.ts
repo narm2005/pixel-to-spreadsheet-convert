@@ -205,10 +205,10 @@ export const useSecureFileUpload = () => {
       // Call the edge function with proper authentication
       const { data: functionResponse, error: functionError } = await supabase.functions
         .invoke('process-receipt', {
-          body: {
+          body: JSON.stringify({
             fileIds: fileIds,
             fileNames: fileNames
-          },
+          }),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`
