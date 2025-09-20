@@ -266,10 +266,15 @@ Deno.serve(async (req) => {
 
     // Call your backend API
     console.log('🔗 Calling external backend API...');
+    console.log('📤 Sending payload to backend:', JSON.stringify({
+      files: filesPayload
+    }, null, 2));
+    
     const backendResponse = await fetch("https://receipt2xcl.onrender.com/process", {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
       },
       body: JSON.stringify({
         files: filesPayload
@@ -279,7 +284,8 @@ Deno.serve(async (req) => {
     console.log('📞 Backend API response status:', {
       status: backendResponse.status,
       statusText: backendResponse.statusText,
-      ok: backendResponse.ok
+      ok: backendResponse.ok,
+      headers: Object.fromEntries(backendResponse.headers.entries())
     });
 
     if (!backendResponse.ok) {
@@ -296,7 +302,8 @@ Deno.serve(async (req) => {
     console.log('✅ Backend API response received:', {
       hasData: !!backendData,
       dataKeys: backendData ? Object.keys(backendData) : [],
-      dataType: typeof backendData
+      dataType: typeof backendData,
+      fullResponse: JSON.stringify(backendData, null, 2)
     });
 
     // Process the backend response and update database records
@@ -305,13 +312,21 @@ Deno.serve(async (req) => {
       const fileName = fileNamesArray[i];
       
       // Extract data for this specific file from backend response
-      // Assuming your backend returns data for each file
-      const fileResult = backendData.files?.[i] || backendData;
+      // Your backend returns { "files": [...] } format
+      const fileResult = backendData.files?.[i];
+      
+      if (!fileResult) {
+        console.error(`❌ No result found for file ${i + 1} in backend response`);
+        throw new Error(`No processing result found for file: ${fileName}`);
+      }
       
       console.log(`💾 Processing backend result for file ${i + 1}:`, {
         fileId,
         hasResult: !!fileResult,
-        resultKeys: fileResult ? Object.keys(fileResult) : []
+        resultKeys: fileResult ? Object.keys(fileResult) : [],
+        merchant: fileResult?.merchant,
+        total: fileResult?.total,
+        itemsCount: fileResult?.items?.length
       });
 
       const processedResult = {

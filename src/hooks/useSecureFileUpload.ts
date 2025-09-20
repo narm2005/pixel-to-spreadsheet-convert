@@ -197,10 +197,19 @@ export const useSecureFileUpload = () => {
       console.log('📞 Edge function payload:', {
         fileIds,
         fileNames,
-        fileCount: fileIds.length
+        fileCount: fileIds.length,
+        payloadSize: JSON.stringify({ fileIds, fileNames }).length
       });
 
       setUploadProgress(50);
+
+      console.log('🔑 Session details for edge function:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        tokenLength: session?.access_token?.length || 0,
+        tokenPreview: session?.access_token?.substring(0, 20) + '...',
+        userId: user.id
+      });
 
       // Call the edge function with proper authentication
       const { data: functionResponse, error: functionError } = await supabase.functions
@@ -211,7 +220,8 @@ export const useSecureFileUpload = () => {
           }),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': supabase.supabaseKey
           }
         });
 
@@ -219,12 +229,22 @@ export const useSecureFileUpload = () => {
         hasData: !!functionResponse,
         hasError: !!functionError,
         errorMessage: functionError?.message,
-        responseKeys: functionResponse ? Object.keys(functionResponse) : []
+        responseKeys: functionResponse ? Object.keys(functionResponse) : [],
+        fullError: functionError ? JSON.stringify(functionError, null, 2) : null,
+        fullResponse: functionResponse ? JSON.stringify(functionResponse, null, 2) : null
       });
 
       if (functionError) {
         console.error('❌ Edge function error:', functionError);
-        throw new Error(`Processing failed: ${functionError.message}`);
+        
+        // Handle specific error types
+        if (functionError.message?.includes('FunctionsHttpError')) {
+          throw new Error(`Edge function error: ${functionError.message}. Please check if the function is deployed.`);
+        } else if (functionError.message?.includes('Unauthorized')) {
+          throw new Error('Authentication failed. Please sign out and sign in again.');
+        } else {
+          throw new Error(`Processing failed: ${functionError.message}`);
+        }
       }
 
       if (!functionResponse) {
