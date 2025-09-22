@@ -1,7 +1,7 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 }
 
 Deno.serve(async (req) => {
@@ -40,16 +40,20 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     console.log('✅ Supabase client created successfully');
 
-    // Parse request body
+    // Parse request body using req.json()
     let requestBody;
     try {
-      const bodyText = await req.text();
-      console.log('📄 Raw request body received:', bodyText);
-      requestBody = JSON.parse(bodyText);
+      requestBody = await req.json();
       console.log('📄 Parsed request body:', requestBody);
     } catch (parseError) {
-      console.error('❌ Error parsing request body:', parseError);
-      throw new Error('Invalid JSON in request body');
+      console.error('❌ Error parsing JSON body:', parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
     }
 
     const { fileIds, fileNames } = requestBody;
