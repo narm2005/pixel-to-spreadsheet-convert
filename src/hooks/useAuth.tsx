@@ -222,12 +222,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 .eq('id', session.user.id);
             }
 
-            if (event !== 'TOKEN_REFRESHED') {
-              toast({
-                title: "Welcome!",
-                description: `Successfully signed in as ${session.user.email}`,
-              });
-            }
+            toast({
+              title: "Welcome!",
+              description: `Successfully signed in as ${session.user.email}`,
+            });
           } catch (error) {
             console.error('Error in sign-in handler:', error);
           }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 export const useSecureFileUpload = () => {
@@ -187,7 +187,7 @@ export const useSecureFileUpload = () => {
 
       // Step 2: Process files via edge function (40-100% progress)
       console.log('📞 Preparing to call process-receipt edge function...');
-      console.log('📞 Edge function URL:', `${supabase.supabaseUrl}/functions/v1/process-receipt`);
+      console.log('📞 Edge function URL:', `${SUPABASE_URL}/functions/v1/process-receipt`);
       console.log('📞 Session token available:', !!session.access_token);
       console.log('📞 User ID:', user.id);
 
@@ -221,7 +221,7 @@ export const useSecureFileUpload = () => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
-            'apikey': supabase.supabaseKey
+            'apikey': SUPABASE_PUBLISHABLE_KEY
           }
         });
 
@@ -345,7 +345,7 @@ export const useSecureFileUpload = () => {
    
     try {
       console.log('📞 Calling export-merged-data edge function...');
-      console.log('📞 Export function URL:', `${supabase.supabaseUrl}/functions/v1/export-merged-data`);
+      console.log('📞 Export function URL:', `${SUPABASE_URL}/functions/v1/export-merged-data`);
       console.log('📞 Export payload:', {
         format,
         userId: user.id,
