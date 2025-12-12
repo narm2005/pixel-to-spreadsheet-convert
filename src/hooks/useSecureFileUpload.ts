@@ -28,8 +28,15 @@ export const useSecureFileUpload = () => {
   const handleFilesValidation = (files: File[]) => {
     if (files.length === 0) return;
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
-    const maxSize = 10 * 1024 * 1024;
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/bmp",
+      "image/webp",
+      "application/pdf",
+    ];
+    const maxSize = 10 * 1024 * 1024; // 10MB
     const maxFiles = 10;
 
     if (files.length > maxFiles) {
@@ -41,8 +48,7 @@ export const useSecureFileUpload = () => {
       return;
     }
 
-    const invalid = files.filter(f => !allowedTypes.includes(f.type) || f.size > maxSize);
-
+    const invalid = files.filter((f) => !allowedTypes.includes(f.type) || f.size > maxSize);
     if (invalid.length > 0) {
       toast({
         title: "Invalid files",
@@ -58,7 +64,7 @@ export const useSecureFileUpload = () => {
 
     toast({
       title: "Files selected",
-      description: files.map(f => f.name).join(", "),
+      description: files.map((f) => f.name).join(", "),
     });
   };
 
@@ -87,9 +93,7 @@ export const useSecureFileUpload = () => {
     try {
       const uploadedFiles = [];
 
-      // -------------------------------
-      // Step 1: Upload files
-      // -------------------------------
+      // Upload files to Supabase Storage
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         const timestamp = Date.now();
@@ -124,31 +128,28 @@ export const useSecureFileUpload = () => {
         setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 40));
       }
 
-      // -------------------------------
-      // Step 2: Process via Edge Function
-      // -------------------------------
-      const fileIds = uploadedFiles.map(f => f.id);
-      const fileNames = uploadedFiles.map(f => f.fileName);
+      // Call Edge Function
+      const fileIds = uploadedFiles.map((f) => f.id);
+      const fileNames = uploadedFiles.map((f) => f.fileName);
 
-      const { data: functionResponse, error: functionError } =
-        await supabase.functions.invoke("process-receipt", {
-          body: JSON.stringify({
-            fileIds,
-            fileNames,
-          }),
+      const { data: functionResponse, error: functionError } = await supabase.functions.invoke(
+        "process-receipt",
+        {
+          body: JSON.stringify({ fileIds, fileNames }),
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
             apikey: supabase.supabaseKey,
           },
-        });
+        }
+      );
 
       if (functionError) throw functionError;
-      if (!functionResponse) throw new Error("No function response");
+      if (!functionResponse) throw new Error("No response from function");
 
       setUploadProgress(90);
 
-      const { receipts, mergedData: merged, summary } = functionResponse;
+      const { receipts, mergedData: merged } = functionResponse;
 
       setProcessedData(receipts);
       setMergedData(merged);
@@ -158,7 +159,6 @@ export const useSecureFileUpload = () => {
         title: "Processing complete",
         description: `Processed ${receipts?.length || 0} files.`,
       });
-
     } catch (error: any) {
       toast({
         title: "Processing failed",
@@ -171,10 +171,8 @@ export const useSecureFileUpload = () => {
     }
   };
 
-  // -------------------------------
-  // EXPORT DATA — FIXED JSON STRINGIFY
-  // -------------------------------
-  const handleExport = async (format: 'excel' | 'csv' | 'json', exportData: any) => {
+  // Export files (Excel / CSV / JSON)
+  const handleExport = async (format: "excel" | "csv" | "json", exportData: any) => {
     if (!exportData || !user) {
       toast({
         title: "Missing data",
@@ -186,11 +184,7 @@ export const useSecureFileUpload = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("export-merged-data", {
-        body: JSON.stringify({
-          mergedData: exportData,
-          format,
-          userId: user.id,
-        }),
+        body: JSON.stringify({ mergedData: exportData, format, userId: user.id }),
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token}`,
@@ -199,22 +193,16 @@ export const useSecureFileUpload = () => {
 
       if (error) throw error;
 
-      // Excel: Convert Base64 → Blob
-      let blob;
+      let blob: Blob;
       if (format === "excel") {
         const byteChars = atob(data);
         const bytes = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-          bytes[i] = byteChars.charCodeAt(i);
-        }
-        blob = new Blob([bytes], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
+        for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+        blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       } else {
-        blob = new Blob(
-          [format === "csv" ? data : JSON.stringify(data, null, 2)],
-          { type: format === "csv" ? "text/csv" : "application/json" }
-        );
+        blob = new Blob([format === "csv" ? data : JSON.stringify(data, null, 2)], {
+          type: format === "csv" ? "text/csv" : "application/json",
+        });
       }
 
       const url = URL.createObjectURL(blob);
@@ -224,17 +212,9 @@ export const useSecureFileUpload = () => {
       a.click();
       URL.revokeObjectURL(url);
 
-      toast({
-        title: "Export complete",
-        description: "Download started.",
-      });
-
+      toast({ title: "Export complete", description: "Download started." });
     } catch (error: any) {
-      toast({
-        title: "Export failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Export failed", description: error.message, variant: "destructive" });
     }
   };
 
