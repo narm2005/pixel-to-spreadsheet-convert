@@ -100,42 +100,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    const handleOAuthCallback = async (): Promise<boolean> => {
-      try {
-        if (window.location.hash && window.location.hash.includes('access_token')) {
-          console.log('🔐 Processing OAuth hash tokens...');
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const accessToken = hashParams.get('access_token');
-          const refreshToken = hashParams.get('refresh_token');
+  const handleOAuthCallback = async (): Promise<boolean> => {
+  try {
+    // Supabase handles BOTH hash and ?code formats automatically
+    const { data, error } = await supabase.auth.getSessionFromUrl({
+      storeSession: true,
+    });
 
-          if (accessToken && refreshToken) {
-            const { data, error } = await withTimeout(
-              supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              }),
-              8000,
-              'OAuth session setup timed out'
-            );
+    if (error) throw error;
 
-            if (error) throw error;
+    if (data?.session) {
+      console.log("✅ OAuth session established:", data.session.user.email);
 
-            if (mounted) {
-              setSession(data.session);
-              setUser(data.session?.user ?? null);
-              setLoading(false);
-            }
+      setSession(data.session);
+      setUser(data.session.user);
+      setLoading(false);
 
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            toast({
-              title: "Welcome!",
-              description: "Successfully signed in with Google",
-            });
+      toast({
+        title: "Welcome!",
+        description: "You are now signed in.",
+      });
 
-            return true;
-          }
-        }
+      // Remove query params from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      return true;
+     }
+    } catch (error: any) {
+    console.error("❌ OAuth callback error:", error);
+    toast({
+      title: "Authentication Error",
+      description: error.message || "OAuth callback failed.",
+      variant: "destructive",
+    });
+
+    setTimeout(() => {
+      window.location.href = "/signin";
+    }, 2000);
+  }
+
+  return false;
+};
 
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
