@@ -49,15 +49,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         console.log('🔑 Checking current session...');
 
-        const isOAuthCallback = window.location.hash.includes('access_token') || 
-                                window.location.search.includes('code=');
-
-        if (isOAuthCallback) {
-          console.log('📲 OAuth callback detected, handling...');
-          const handled = await handleOAuthCallback();
-          if (handled && mounted) {
-            return;
-          }
+        if (window.location.hash.includes("access_token") || 
+              window.location.search.includes("code=")) {
+              console.log("🔐 OAuth callback detected");
+  
+              const handled = await handleOAuthCallback();
+              if (handled) return;
         }
 
         console.log('🔄 Getting session with 10s timeout...');
