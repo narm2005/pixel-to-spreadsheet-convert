@@ -15,228 +15,97 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, errorMessage?: string): Promise<T> => {
-  let timeoutId: NodeJS.Timeout;
-  
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(errorMessage || `Operation timed out after ${timeoutMs}ms`)), timeoutMs);
-  });
-  
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
-};
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    console.log('🔍 Auth state:', {
-      hasUser: !!user,
-      hasSession: !!session,
-      userEmail: user?.email,
-      loading
-    });
-  }, [user, session, loading]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        console.log('🔑 Checking current session...');
-
-        if (window.location.hash.includes("access_token") || 
-              window.location.search.includes("code=")) {
-              console.log("🔐 OAuth callback detected");
-  
-              const handled = await handleOAuthCallback();
-              if (handled) return;
-        }
-
-        console.log('🔄 Getting session with 10s timeout...');
-        const { data: { session }, error } = await withTimeout(
-          supabase.auth.getSession(),
-          10000,
-          'Session check timed out. Please refresh the page.'
-        );
-
-        if (!mounted) return;
-
-        if (error) {
-          console.error('❌ Session error:', error);
-          setSession(null);
-          setUser(null);
-        } else {
-          console.log('✅ Session retrieved:', session?.user?.email || 'no session');
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-      } catch (error: any) {
-        console.error('❌ Auth initialization error:', error);
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          
-          if (error.message?.includes('timed out')) {
-            toast({
-              title: "Connection Issue",
-              description: "Session check timed out. Please refresh the page.",
-              variant: "destructive",
-            });
-          }
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-          console.log('✅ Auth initialization complete');
-        }
-      }
-    };
-
+  // 🚀 NEW — Handles OAuth redirects using official Supabase helper
   const handleOAuthCallback = async (): Promise<boolean> => {
-  try {
-    // Supabase handles BOTH hash and ?code formats automatically
-    const { data, error } = await supabase.auth.getSessionFromUrl({
-      storeSession: true,
-    });
+    try {
+      const { data, error } = await supabase.auth.getSessionFromUrl({
+        storeSession: true,
+      });
 
-    if (error) throw error;
+      if (error) throw error;
+      if (!data?.session) return false;
 
-    if (data?.session) {
       console.log("✅ OAuth session established:", data.session.user.email);
 
       setSession(data.session);
       setUser(data.session.user);
       setLoading(false);
 
+      // Clean up URL (...?code=xxx → /dashboard)
+      window.history.replaceState({}, document.title, window.location.pathname);
+
       toast({
         title: "Welcome!",
         description: "You are now signed in.",
       });
 
-      // Remove query params from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-
       return true;
-     }
-    } catch (error: any) {
-    console.error("❌ OAuth callback error:", error);
-    toast({
-      title: "Authentication Error",
-      description: error.message || "OAuth callback failed.",
-      variant: "destructive",
-    });
+    } catch (err: any) {
+      console.error("❌ OAuth callback error:", err);
 
-    setTimeout(() => {
-      window.location.href = "/signin";
-    }, 2000);
-  }
+      toast({
+        title: "Authentication Error",
+        description: err.message || "OAuth callback failed.",
+        variant: "destructive",
+      });
 
-  return false;
-};
+      // Redirect safely
+      setTimeout(() => {
+        window.location.href = "/signin";
+      }, 1500);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        
-        if (code) {
-          console.log('🔐 Exchanging code for session...');
-          const { data, error } = await withTimeout(
-            supabase.auth.exchangeCodeForSession(code),
-            8000,
-            'OAuth code exchange timed out'
-          );
-
-          if (error) throw error;
-
-          if (mounted) {
-            setSession(data.session);
-            setUser(data.session?.user ?? null);
-            setLoading(false);
-          }
-
-          window.history.replaceState({}, document.title, window.location.pathname);
-          
-          toast({
-            title: "Welcome!",
-            description: "Successfully signed in",
-          });
-
-          return true;
-        }
-      } catch (error: any) {
-        console.error('❌ OAuth callback error:', error);
-        toast({
-          title: "Authentication Error",
-          description: error.message || "Failed to complete sign-in. Please try again.",
-          variant: "destructive",
-        });
-        
-        setTimeout(() => {
-          window.location.href = '/signin';
-        }, 2000);
-      }
-      
       return false;
+    }
+  };
+
+  // 🚀 Initialization
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      try {
+        console.log("🔑 Initializing auth...");
+
+        // 1️⃣ First handle OAuth redirect if present
+        if (
+          window.location.hash.includes("access_token") ||
+          window.location.search.includes("code=")
+        ) {
+          console.log("🔐 OAuth callback detected");
+          const handled = await handleOAuthCallback();
+          if (handled && mounted) return; // stop here — user is signed in
+        }
+
+        // 2️⃣ Otherwise, load existing session
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      } catch (err) {
+        console.error("❌ Auth init error:", err);
+        setSession(null);
+        setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
 
-    initializeAuth();
+    init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Auth state changed:', event, session?.user?.email);
-        
-        if (!mounted) return;
+    // 3️⃣ Subscribe to auth state changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("🔄 Auth state changed:", event);
 
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            await supabase
-              .from('profiles')
-              .upsert({
-                id: session.user.id,
-                name: session.user.user_metadata?.name || session.user.user_metadata?.full_name,
-                email: session.user.email,
-                picture: session.user.user_metadata?.picture || session.user.user_metadata?.avatar_url,
-                user_tier: 'freemium',
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'id'
-              });
-
-            const { data: subscription } = await supabase
-              .from('subscribers')
-              .select('subscribed, subscription_tier')
-              .eq('user_id', session.user.id)
-              .eq('subscribed', true)
-              .maybeSingle();
-
-            if (subscription?.subscribed) {
-              await supabase
-                .from('profiles')
-                .update({ 
-                  user_tier: 'premium',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', session.user.id);
-            }
-
-            toast({
-              title: "Welcome!",
-              description: `Successfully signed in as ${session.user.email}`,
-            });
-          } catch (error) {
-            console.error('Error in sign-in handler:', error);
-          }
-        }
-
-        if (event === 'SIGNED_OUT') {
+        if (event === "SIGNED_OUT") {
           setSession(null);
           setUser(null);
         }
@@ -245,87 +114,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      listener.subscription.unsubscribe();
     };
-  }, [toast]);
+  }, []);
 
+  // 🚀 LOGIN
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signInWithPassword({ email, password }),
-        10000,
-        'Sign in timed out. Please check your connection and try again.'
-      );
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error };
     } catch (error: any) {
       return { error };
     }
   };
 
+  // 🚀 SIGNUP
   const signUp = async (email: string, password: string) => {
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
-      const { error } = await withTimeout(
-        supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: redirectUrl }
-        }),
-        10000,
-        'Sign up timed out. Please try again.'
-      );
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: redirectUrl },
+      });
       return { error };
     } catch (error: any) {
       return { error };
     }
   };
 
+  // 🚀 LOGOUT
   const signOut = async () => {
-    console.log('🚪 Signing out:', user?.email);
-    
-    setUser(null);
-    setSession(null);
-    setLoading(false);
-
     try {
-      const { error } = await withTimeout(
-        supabase.auth.signOut(),
-        5000,
-        'Sign out timed out, but local session cleared'
-      );
-      
-      if (error && !error.message.includes('timed out')) {
-        console.error('Sign out error:', error);
-        return { error };
-      }
-      
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out.",
-      });
-      return { error: null };
+      const { error } = await supabase.auth.signOut();
+      return { error };
     } catch (error: any) {
-      console.error('Sign out error:', error);
-      toast({
-        title: "Signed out",
-        description: "You have been signed out locally.",
-      });
-      return { error: null };
+      return { error };
     }
   };
 
+  // 🚀 GOOGLE LOGIN
   const signInWithGoogle = async () => {
     const redirectUrl = `${window.location.origin}/dashboard`;
-    console.log('🔑 Google OAuth redirect:', redirectUrl);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: redirectUrl,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
-        }
+        queryParams: { access_type: "offline", prompt: "consent" },
       },
     });
 
@@ -333,24 +169,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      loading,
-      signIn,
-      signUp,
-      signOut,
-      signInWithGoogle
-    }}>
-      {children}
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        signInWithGoogle,
+      }}
+    >
+      {/* Prevent UI from flashing during auth load */}
+      {loading ? <div className="p-8 text-center">Loading...</div> : children}
     </AuthContext.Provider>
   );
 };
 
+// Hook export
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };
