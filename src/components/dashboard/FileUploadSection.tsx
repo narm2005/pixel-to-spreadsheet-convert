@@ -14,7 +14,7 @@ interface FileUploadSectionProps {
   uploadProgress: number;
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDrop: (event: React.DragEvent) => void;
-  onProcessFile: () => void;
+  onProcessFile: () => Promise<void>;
   userTier: 'freemium' | 'premium';
   fileCount: number;
 }
@@ -74,9 +74,8 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   };
 
   const handleProcessWrapper = () => {
-    if (wouldExceedLimit) {
-      return;
-    }
+    if (wouldExceedLimit || selectedForProcessing.size === 0) return;
+
     console.log('🔄 FileUploadSection: Processing wrapper called');
     console.log('📊 Processing state:', {
       totalFiles: selectedFiles.length,
@@ -92,7 +91,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
       return;
     }
     
-    onProcessFile();
+    await onProcessFile();
   };
 
   const handleFileSelection = (index: number, checked: boolean) => {
