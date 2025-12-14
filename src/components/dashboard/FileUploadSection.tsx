@@ -73,7 +73,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
     }
   };
 
-  const handleProcessWrapper = () => {
+  const handleProcessWrapper = async () => {
     if (wouldExceedLimit || selectedForProcessing.size === 0) return;
 
     console.log('🔄 FileUploadSection: Processing wrapper called');
