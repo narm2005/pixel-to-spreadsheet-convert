@@ -84,17 +84,20 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
-          <input
-            id="file-upload"
-            type="file"
-            multiple={userTier === "premium"}
-            accept="image/*,.pdf"
-            onChange={onFileSelect}
-            className="hidden"
-          />
-          <label htmlFor="file-upload">
-            <Button>Select Files</Button>
-          </label>
+         <input
+  id="file-upload"
+  type="file"
+  multiple={userTier === "premium"}
+  accept="image/*,.pdf"
+  onChange={onFileSelect}
+  className="hidden"
+/>
+
+<label htmlFor="file-upload">
+  <Button asChild>
+    <span>Select Files</span>
+  </Button>
+</label>
         </div>
 
         {selectedFiles.length > 0 && (
