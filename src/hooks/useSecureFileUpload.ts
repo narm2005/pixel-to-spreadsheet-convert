@@ -1,155 +1,113 @@
-// useSecureFileUpload.ts
-import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
 
 export const useSecureFileUpload = () => {
-  const { toast } = useToast();
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processedData, setProcessedData] = useState<any>(null);
   const [mergedData, setMergedData] = useState<any>(null);
 
-  /** -----------------------------------------------
-   * Select single file
-   * ----------------------------------------------- */
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
+  const { toast } = useToast();
+  const { user, session } = useAuth();
+
+  const selectedFile = selectedFiles[0] ?? null;
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFiles(Array.from(e.target.files ?? []));
   };
 
-  /** -----------------------------------------------
-   * Handle drop (multiple files)
-   * ----------------------------------------------- */
-  const handleDrop = (files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    setSelectedFiles(fileArray);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setSelectedFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
-  /** -----------------------------------------------
-   * Process a single file
-   * - Uploads to Supabase Storage
-   * - Calls backend to process (OCR)
-   * - Stores processed data
-   * - Calls optional callback to refresh dashboard
-   * ----------------------------------------------- */
-  const handleProcessFile = useCallback(async (
-    file: File,
-    onSuccess?: () => void
-  ) => {
-    if (!file) return;
+  const handleProcessFile = async () => {
+    console.log("🚀 Starting file processing");
+    if (!user || !session) {
+      toast({ title: "Please sign in", variant: "destructive" });
+      return;
+    }
 
+    if (!selectedFiles.length) {
+      toast({ title: "No files selected", variant: "destructive" });
+      return;
+    }
+
+    console.log(`🚀 Uploading ${selectedFiles.length} files`);
     setIsProcessing(true);
-    setUploadProgress(0);
+    setUploadProgress(5);
+    console.log("🚀 Upload progress:", uploadProgress);
 
     try {
-      // Step 1: Upload file to Supabase Storage
-      const filePath = `uploads/${Date.now()}_${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('receipt-uploads')
-        .upload(filePath, file, { upsert: true });
+      const uploaded = [];
 
-      if (uploadError) throw uploadError;
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const path = `${user.id}/${Date.now()}-${file.name}`;
 
-      const publicUrl = supabase.storage.from('receipt-uploads').getPublicUrl(filePath).data.publicUrl;
+        console.log(`🚀 Uploading file ${i + 1}/${selectedFiles.length}: ${file.name}`);
 
-      console.log("File uploaded:", publicUrl);
+        const { error: uploadError } = await supabase.storage
+          .from("receipts")
+          .upload(path, file, { upsert: false });
 
-      setUploadProgress(50);
+          console.log("🚀 Upload progress:", uploadProgress);
+        if (uploadError) throw uploadError; 
+          console.log("🚀 Upload progress:", uploadProgress);
 
-      // Step 2: Insert record in 'processed_files' table (status=processing)
-      const { data: dbData, error: dbError } = await supabase
-        .from('processed_files')
-        .insert({
-          file_name: file.name,
-          original_file_name: file.name,
-          user_id: supabase.auth.getUser().data.user?.id || null,
-          status: 'processing',
-          uploaded_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+        const { data, error } = await supabase
+          .from("processed_files")
+          .insert({
+            user_id: user.id,
+            file_name: path,
+            status: "processing",
+          })
+          .select()
+          .single();
+          console.log("🚀 Upload progress:", uploadProgress);
 
-      if (dbError) throw dbError;
+        if (error) throw error;
 
-      const fileId = dbData.id;
+        uploaded.push({ id: data.id, fileName: path });
+        console.log("🚀 Uploaded file:", file.name);
+        setUploadProgress(30 + Math.round((i / selectedFiles.length) * 30));
+      }
 
-      // Step 3: Call backend API or RPC to process file (OCR/DeepSeek)
-      // For demonstration, we mock processing
-      const mockProcessedData = {
-        fileName: file.name,
-        merchant: "Demo Merchant",
-        total: "123.45",
-        date: new Date().toISOString(),
-        items: [
-          { description: "Item 1", amount: "45.00", category: "Category A" },
-          { description: "Item 2", amount: "78.45", category: "Category B" },
-        ],
-      };
-
-      setUploadProgress(80);
-
-      // Step 4: Update processed_files row with processed data
-      const { error: updateError } = await supabase
-        .from('processed_files')
-        .update({ processed_data: mockProcessedData, status: 'completed' })
-        .eq('id', fileId);
-
-      if (updateError) throw updateError;
-
-      setProcessedData(mockProcessedData);
-
-      // Merge data for advanced exports
-      setMergedData((prev: any) => {
-        const combinedItems = prev?.combinedItems ? [...prev.combinedItems, ...mockProcessedData.items] : [...mockProcessedData.items];
-        return {
-          summary: {
-            totalFiles: (prev?.summary?.totalFiles || 0) + 1,
-            totalAmount: (prev?.summary?.totalAmount || 0) + parseFloat(mockProcessedData.total),
-            totalItems: (prev?.summary?.totalItems || 0) + mockProcessedData.items.length,
-            processedAt: new Date().toISOString(),
+      const { data, error } = await supabase.functions.invoke(
+        "process-receipt",
+        {
+          body: {
+            fileIds: uploaded.map((f) => f.id),
+            fileNames: uploaded.map((f) => f.fileName),
           },
-          combinedItems
-        };
-      });
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
 
+      if (error) throw error;
+      if (!data) throw new Error("Empty Edge Function response");
+
+      setProcessedData(data.receipts);
+      setMergedData(data.mergedData);
       setUploadProgress(100);
-      toast({ title: "File processed successfully" });
 
-      if (onSuccess) onSuccess(); // refresh dashboard
-
+      toast({ title: "Processing complete" });
     } catch (err: any) {
-      console.error("Error processing file:", err);
+      console.error(err);
       toast({
-        title: "File processing failed",
-        description: err.message || "Unknown error",
+        title: "Processing failed",
+        description: err.message ?? "Unknown error",
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
-      setUploadProgress(0);
     }
-  }, [toast]);
-
-  /** -----------------------------------------------
-   * Handle export (CSV / Excel / JSON)
-   * ----------------------------------------------- */
-  const handleExport = useCallback(async (format: 'csv' | 'excel' | 'json', data: any) => {
-    try {
-      // TODO: implement export logic (e.g., SheetJS)
-      console.log(`Exporting as ${format}:`, data);
-      toast({ title: `Export ${format.toUpperCase()} ready!` });
-    } catch (err: any) {
-      toast({
-        title: "Export failed",
-        description: err.message || "Unknown error",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+  };
 
   return {
     selectedFile,
@@ -161,6 +119,5 @@ export const useSecureFileUpload = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
-    handleExport,
   };
 };
