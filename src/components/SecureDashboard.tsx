@@ -121,3 +121,6 @@ export const useSecureFileUpload = () => {
     handleProcessFile,
   };
 };
+
+export default SecureDashboard;
+
