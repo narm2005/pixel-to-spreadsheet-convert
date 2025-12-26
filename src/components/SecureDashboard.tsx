@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 export const useSecureFileUpload = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
