@@ -25,6 +25,7 @@ export const useSecureFileUpload = () => {
   };
 
   const handleProcessFile = async () => {
+    console.log("🚀 Starting file processing");
     if (!user || !session) {
       toast({ title: "Please sign in", variant: "destructive" });
       return;
@@ -35,8 +36,10 @@ export const useSecureFileUpload = () => {
       return;
     }
 
+    console.log(`🚀 Uploading ${selectedFiles.length} files`);
     setIsProcessing(true);
     setUploadProgress(5);
+    console.log("🚀 Upload progress:", uploadProgress);
 
     try {
       const uploaded = [];
@@ -45,11 +48,15 @@ export const useSecureFileUpload = () => {
         const file = selectedFiles[i];
         const path = `${user.id}/${Date.now()}-${file.name}`;
 
+        console.log(`🚀 Uploading file ${i + 1}/${selectedFiles.length}: ${file.name}`);
+
         const { error: uploadError } = await supabase.storage
           .from("receipts")
           .upload(path, file, { upsert: false });
 
-        if (uploadError) throw uploadError;
+          console.log("🚀 Upload progress:", uploadProgress);
+        if (uploadError) throw uploadError; 
+          console.log("🚀 Upload progress:", uploadProgress);
 
         const { data, error } = await supabase
           .from("processed_files")
@@ -60,10 +67,12 @@ export const useSecureFileUpload = () => {
           })
           .select()
           .single();
+          console.log("🚀 Upload progress:", uploadProgress);
 
         if (error) throw error;
 
         uploaded.push({ id: data.id, fileName: path });
+        console.log("🚀 Uploaded file:", file.name);
         setUploadProgress(30 + Math.round((i / selectedFiles.length) * 30));
       }
 
