@@ -39,7 +39,7 @@ export const useSecureFileUpload = () => {
     console.log(`🚀 Uploading ${selectedFiles.length} files`);
     setIsProcessing(true);
     setUploadProgress(5);
-    console.log("🚀 Upload progress:", uploadProgress);
+    console.log("🚀 Upload progress1:", uploadProgress);
 
     try {
       const uploaded = [];
@@ -54,20 +54,27 @@ export const useSecureFileUpload = () => {
           .from("receipts")
           .upload(path, file, { upsert: false });
 
-          console.log("🚀 Upload progress:", uploadProgress);
+          console.log("🚀 Upload progress2:", uploadProgress);
         if (uploadError) throw uploadError; 
-          console.log("🚀 Upload progress:", uploadProgress);
+          console.log("🚀 Upload progress3:", uploadProgress);
 
         const { data, error } = await supabase
           .from("processed_files")
           .insert({
             user_id: user.id,
             file_name: path,
+            original_file_name: file.name,
+            file_size: file.size,
+            merchant: null,
+            total: null,
+            item_count: null,
+            processed_data: null,
+            confidence_score: null,
             status: "processing",
           })
           .select()
           .single();
-          console.log("🚀 Upload progress:", uploadProgress);
+          console.log("🚀 Upload progress4:", uploadProgress);
 
         if (error) throw error;
 
