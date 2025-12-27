@@ -14,7 +14,7 @@ interface FileUploadSectionProps {
   uploadProgress: number;
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDrop: (event: React.DragEvent) => void;
-  onProcessFile: () => Promise<void>;
+  onProcessFile: (files: File[]) => Promise<void>;
   userTier: "freemium" | "premium";
   fileCount: number;
 }
