@@ -53,8 +53,10 @@ export const useSecureFileUpload = () => {
         .from("receipts")
         .upload(path, file, { upsert: false });
 
-      if (uploadError) throw uploadError;
-
+      if (uploadError) {
+        console.error("❌ Storage upload error:", uploadError);
+        throw uploadError;
+      }
       const { data, error } = await supabase
         .from("processed_files")
         .insert({
@@ -67,8 +69,10 @@ export const useSecureFileUpload = () => {
         .select()
         .single();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error("❌ Table update error:", error);
+        throw error;
+      }
       uploaded.push({ id: data.id, fileName: path });
 
       const progress = 30 + Math.round(((i + 1) / files.length) * 30);
