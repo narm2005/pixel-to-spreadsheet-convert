@@ -340,7 +340,7 @@ const SecureDashboard = () => {
               uploadProgress={uploadProgress}
               onFileSelect={handleFileSelect}
               onDrop={handleDrop}
-              onProcessFile={handleProcessFile}
+              onProcessFile={() => handleProcessFile(selectedFiles)}
               userTier={userTier}
               fileCount={fileCount}
             />
