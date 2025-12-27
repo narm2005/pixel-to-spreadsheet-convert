@@ -24,97 +24,121 @@ export const useSecureFileUpload = () => {
     setSelectedFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
-  const handleProcessFile = async () => {
-    console.log("🚀 Starting file processing");
-    if (!user || !session) {
-      toast({ title: "Please sign in", variant: "destructive" });
-      return;
-    }
+  const handleProcessFile = async (files: File[]) => {
+  console.log("🚀 Starting file processing");
 
-    if (!selectedFiles.length) {
-      toast({ title: "No files selected", variant: "destructive" });
-      return;
-    }
+  if (!user || !session) {
+    toast({ title: "Please sign in", variant: "destructive" });
+    return;
+  }
 
-    console.log(`🚀 Uploading ${selectedFiles.length} files`);
-    setIsProcessing(true);
-    setUploadProgress(5);
-    console.log("🚀 Upload progress1:", uploadProgress);
+  if (!files.length) {
+    toast({ title: "No files selected", variant: "destructive" });
+    return;
+  }
 
-    try {
-      const uploaded = [];
+  setIsProcessing(true);
+  setUploadProgress(5);
 
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        const path = `${user.id}/${Date.now()}-${file.name}`;
+  try {
+    const uploaded: { id: string; fileName: string }[] = [];
 
-        console.log(`🚀 Uploading file ${i + 1}/${selectedFiles.length}: ${file.name}`);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const path = `${user.id}/${Date.now()}-${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("receipts")
-          .upload(path, file, { upsert: false });
+      console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name}`);
 
-          console.log("🚀 Upload progress2:", uploadProgress);
-        if (uploadError) throw uploadError; 
-          console.log("🚀 Upload progress3:", uploadProgress);
+      const { error: uploadError } = await supabase.storage
+        .from("receipts")
+        .upload(path, file, { upsert: false });
 
-        const { data, error } = await supabase
-          .from("processed_files")
-          .insert({
-            user_id: user.id,
-            file_name: path,
-            original_file_name: file.name,
-            file_size: file.size,
-            merchant: null,
-            total: null,
-            item_count: null,
-            processed_data: null,
-            confidence_score: null,
-            status: "processing",
-          })
-          .select()
-          .single();
-          console.log("🚀 Upload progress4:", uploadProgress);
+      if (uploadError) throw uploadError;
 
-        if (error) throw error;
-
-        uploaded.push({ id: data.id, fileName: path });
-        console.log("🚀 Uploaded file:", file.name);
-        setUploadProgress(30 + Math.round((i / selectedFiles.length) * 30));
-      }
-
-      const { data, error } = await supabase.functions.invoke(
-        "process-receipt",
-        {
-          body: {
-            fileIds: uploaded.map((f) => f.id),
-            fileNames: uploaded.map((f) => f.fileName),
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
+      const { data, error } = await supabase
+        .from("processed_files")
+        .insert({
+          user_id: user.id,
+          file_name: path,
+          original_file_name: file.name,
+          file_size: file.size,
+          status: "processing",
+        })
+        .select()
+        .single();
 
       if (error) throw error;
-      if (!data) throw new Error("Empty Edge Function response");
 
-      setProcessedData(data.receipts);
-      setMergedData(data.mergedData);
-      setUploadProgress(100);
+      uploaded.push({ id: data.id, fileName: path });
 
-      toast({ title: "Processing complete" });
-    } catch (err: any) {
-      console.error(err);
-      toast({
-        title: "Processing failed",
-        description: err.message ?? "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
+      const progress = 30 + Math.round(((i + 1) / files.length) * 30);
+      setUploadProgress(progress);
     }
-  };
+
+    const { data, error } = await supabase.functions.invoke("process-receipt", {
+      body: {
+        fileIds: uploaded.map(f => f.id),
+        fileNames: uploaded.map(f => f.fileName),
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (error) throw error;
+    if (!data) throw new Error("Empty Edge Function response");
+
+    setProcessedData(data.receipts);
+    setMergedData(data.mergedData);
+    setUploadProgress(100);
+
+    toast({ title: "Processing complete" });
+
+  } catch (err: any) {
+    console.error(err);
+    toast({
+      title: "Processing failed",
+      description: err.message ?? "Unknown error",
+      variant: "destructive",
+    });
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
+
+  //     const { data, error } = await supabase.functions.invoke(
+  //       "process-receipt",
+  //       {
+  //         body: {
+  //           fileIds: uploaded.map((f) => f.id),
+  //           fileNames: uploaded.map((f) => f.fileName),
+  //         },
+  //         headers: {
+  //           Authorization: `Bearer ${session.access_token}`,
+  //         },
+  //       }
+  //     );
+
+  //     if (error) throw error;
+  //     if (!data) throw new Error("Empty Edge Function response");
+
+  //     setProcessedData(data.receipts);
+  //     setMergedData(data.mergedData);
+  //     setUploadProgress(100);
+
+  //     toast({ title: "Processing complete" });
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     toast({
+  //       title: "Processing failed",
+  //       description: err.message ?? "Unknown error",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsProcessing(false);
+  //   }
+  // };
 
   return {
     selectedFile,
