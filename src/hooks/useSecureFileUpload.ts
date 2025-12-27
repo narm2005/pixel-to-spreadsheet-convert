@@ -49,29 +49,38 @@ export const useSecureFileUpload = () => {
 
       console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name}`);
 
-      const { error: uploadError } = await supabase.storage
-        .from("receipts")
-        .upload(path, file, { upsert: false });
+      const { data, error: uploadError } = await supabase.storage
+      .from("receipts")
+      .upload(path, file, { upsert: false });
 
       if (uploadError) {
         console.error("❌ Storage upload error:", uploadError);
-        throw uploadError;
+        toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+        continue; // skip this file
       }
-      const { data, error } = await supabase
-        .from("processed_files")
-        .insert({
-          user_id: user.id,
-          file_name: path,
-          original_file_name: file.name,
-          file_size: file.size,
-          status: "processing",
-        })
-        .select()
-        .single();
+      console.log("✅ Upload successful:", path);
 
-      if (error) {
-        console.error("❌ Table update error:", error);
-        throw error;
+      const { data: dbData, error: dbError } = await supabase
+      .from("processed_files")
+      .insert({
+        user_id: user.id,
+        file_name: path,
+        original_file_name: file.name,
+        file_size: file.size,
+        merchant: null,
+        total: null,
+        item_count: null,
+        processed_data: null,
+        confidence_score: null,
+        status: "processing",
+      })
+      .select()
+      .single();
+
+      if (dbError) {
+        console.error("❌ DB insert failed:", dbError);
+      } else {
+        console.log("✅ DB insert successful:", dbData.id);
       }
       uploaded.push({ id: data.id, fileName: path });
 
