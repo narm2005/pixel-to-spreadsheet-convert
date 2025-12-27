@@ -32,7 +32,7 @@ export const useSecureFileUpload = () => {
     return;
   }
 
-  if (!files.length) {
+  if (!files || files.length === 0) {
     toast({ title: "No files selected", variant: "destructive" });
     return;
   }
