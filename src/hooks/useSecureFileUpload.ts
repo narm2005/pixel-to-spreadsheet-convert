@@ -93,9 +93,9 @@ export const useSecureFileUpload = () => {
         fileIds: uploaded.map(f => f.id),
         filePaths: uploaded.map(f => f.fileName), // ✅ renamed
       },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      // headers: {
+      //   Authorization: `Bearer ${session.access_token}`,
+      // },
     });
 
     if (error) throw error;
