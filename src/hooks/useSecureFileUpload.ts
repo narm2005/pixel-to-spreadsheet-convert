@@ -91,7 +91,7 @@ export const useSecureFileUpload = () => {
     const { data, error } = await supabase.functions.invoke("process-receipt", {
       body: {
         fileIds: uploaded.map(f => f.id),
-        fileNames: uploaded.map(f => f.fileName),
+        filePaths: uploaded.map(f => f.fileName), // ✅ renamed
       },
       headers: {
         Authorization: `Bearer ${session.access_token}`,
