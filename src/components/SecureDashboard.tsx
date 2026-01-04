@@ -320,6 +320,13 @@ const SecureDashboard = () => {
     }
   }, [processedData]);
 
+  useEffect(() => {
+  if (activeSection === "history" && user) {
+    fetchProcessedFiles();
+  }
+  }, [activeSection, user]);
+
+
   // Sidebar menu items
   const menuItems = [
     { id: 'upload', label: 'Upload Files', icon: Upload, description: 'Upload and process new receipts' },
