@@ -73,6 +73,7 @@ const SecureDashboard = () => {
     }
   }, [session, loading, navigate]);
 
+  
   const fetchUserProfile = async () => {
     if (!user) return;
 
@@ -320,12 +321,16 @@ const SecureDashboard = () => {
     }
   }, [processedData]);
 
+  /* ===========================
+     🔑 CRITICAL FIX
+     File History must refetch
+     when tab is opened
+     =========================== */
   useEffect(() => {
-  if (activeSection === "history" && user) {
-    fetchProcessedFiles();
-  }
+    if (activeSection === "history" && user) {
+      fetchProcessedFiles();
+    }
   }, [activeSection, user]);
-
 
   // Sidebar menu items
   const menuItems = [
