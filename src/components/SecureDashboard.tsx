@@ -313,6 +313,14 @@ const SecureDashboard = () => {
       fetchUserFileCount();
     }
   }, [user]);
+  
+  useEffect(() => {
+    if (loading) return;          // 🚫 wait until auth is resolved
+    if (!user) return;            // 🚫 still not logged in
+
+      fetchProcessedFiles();
+      fetchUserFileCount();
+    }, [loading, user]);
 
   useEffect(() => {
     if (processedData) {
@@ -327,10 +335,11 @@ const SecureDashboard = () => {
      when tab is opened
      =========================== */
   useEffect(() => {
-    if (activeSection === "history" && user) {
-      fetchProcessedFiles();
-    }
-  }, [activeSection, user]);
+  if (!loading && activeSection === "history" && user) {
+    fetchProcessedFiles();
+  }
+  }, [activeSection, loading, user]);
+
 
   // Sidebar menu items
   const menuItems = [
