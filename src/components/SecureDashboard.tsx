@@ -315,6 +315,7 @@ const SecureDashboard = () => {
   }, [user]);
   
   useEffect(() => {
+    console.log("Loading:",loading);
     if (loading) return;          // 🚫 wait until auth is resolved
     if (!user) return;            // 🚫 still not logged in
 
@@ -322,12 +323,12 @@ const SecureDashboard = () => {
       fetchUserFileCount();
     }, [loading, user]);
 
-  useEffect(() => {
-    if (processedData) {
-      fetchProcessedFiles();
-      fetchUserFileCount();
-    }
-  }, [processedData]);
+  // useEffect(() => {
+  //   if (processedData) {
+  //     fetchProcessedFiles();
+  //     fetchUserFileCount();
+  //   }
+  // }, [processedData]);
 
   /* ===========================
      🔑 CRITICAL FIX
