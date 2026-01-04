@@ -247,8 +247,12 @@ const SecureDashboard = () => {
     console.log("User signed out");
   };
 
-  const handleFileDownload = async (fileId: string, format: 'excel' | 'csv' | 'json') => {
-    // Check if user has premium access for non-CSV formats
+  const handleFilesDownload = async (
+  fileIds: string[],
+  format: 'excel' | 'csv' | 'json'
+) => {
+  try {
+    // Premium check
     if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
       toast({
         title: "Premium Feature",
@@ -259,52 +263,75 @@ const SecureDashboard = () => {
       return;
     }
 
-    try {
-      const { data: fileData, error } = await supabase
-        .from('processed_files')
-        .select('processed_data')
-        .eq('id', fileId)
-        .single();
-
-      if (error) throw error;
-
-      if (fileData && fileData.processed_data) {
-        const receipt = fileData.processed_data;
-
-        const convertedMergedData = {
-          summary: {
-            totalFiles: 1,
-            totalAmount: parseFloat(receipt.total),
-            totalItems: receipt.items.length,
-            processedAt: receipt.date || new Date().toISOString()
-          },
-          combinedItems: receipt.items.map((item, index) => ({
-            receiptNumber: 1,
-            merchant: receipt.merchant,
-            date: receipt.date,
-            description: item.description,
-            amount: item.amount,
-            category: item.category || '',
-            fileName: receipt.fileName || 'receipt'
-          }))
-        };
-
-        await handleExport(format, convertedMergedData);
-      } else {
-        toast({
-          title: "No data available",
-          description: "This file hasn't been processed yet or has no data.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
+    if (!fileIds.length) {
       toast({
-        title: "Download failed",
-        description: error.message,
+        title: "No files selected",
+        description: "Please select at least one file to export.",
         variant: "destructive",
       });
+      return;
     }
-  };
+
+    // Fetch all processed files from Supabase
+    const { data: filesData, error } = await supabase
+      .from('processed_files')
+      .select('processed_data, file_name')
+      .in('id', fileIds);
+
+    if (error) throw error;
+
+    if (!filesData?.length) {
+      toast({
+        title: "No data available",
+        description: "Selected files have not been processed yet or have no data.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Merge all file data for export
+    const mergedData = filesData.reduce(
+      (acc, file) => {
+        const receipt = file.processed_data;
+        if (!receipt) return acc;
+
+        // Update summary
+        acc.summary.totalFiles += 1;
+        acc.summary.totalAmount += parseFloat(receipt.total);
+        acc.summary.totalItems += receipt.items.length;
+
+        // Combine items
+        const items = receipt.items.map(item => ({
+          receiptNumber: acc.summary.totalFiles,
+          merchant: receipt.merchant,
+          date: receipt.date,
+          description: item.description,
+          amount: item.amount,
+          category: item.category || '',
+          fileName: file.file_name || 'receipt',
+        }));
+
+        acc.combinedItems.push(...items);
+        return acc;
+      },
+      {
+        summary: { totalFiles: 0, totalAmount: 0, totalItems: 0, processedAt: new Date().toISOString() },
+        combinedItems: [] as any[],
+      }
+    );
+
+    // Export merged data
+    await handleExport(format, mergedData);
+
+  } catch (err: any) {
+    toast({
+      title: "Download failed",
+      description: err.message || "Unknown error",
+      variant: "destructive",
+    });
+  }
+};
+
 
   useEffect(() => {
     if (user) {
