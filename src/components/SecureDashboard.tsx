@@ -239,7 +239,7 @@ const SecureDashboard = () => {
   };
 
   
-  const handleExport = async (
+  const exportData = async (
   format: 'excel' | 'csv' | 'json',
   mergedData: any
 ) => {
@@ -395,7 +395,7 @@ const SecureDashboard = () => {
     );
 
     // Export merged data
-    await handleExport(format, mergedData);
+    await exportData(format, mergedData);
 
   } catch (err: any) {
     toast({
@@ -476,7 +476,7 @@ const SecureDashboard = () => {
                 <ResultsSection
                   processedData={processedData}
                   mergedData={mergedData}
-                  onExport={handleExport}
+                  onExport={handleExportWrapper}
                   userTier={userTier}
                 />
               }
@@ -484,7 +484,7 @@ const SecureDashboard = () => {
               <ResultsSection
                 processedData={processedData}
                 mergedData={mergedData}
-                onExport={handleExport}
+                onExport={handleExportWrapper}
                 userTier={userTier}
               />
             </PremiumGate>
