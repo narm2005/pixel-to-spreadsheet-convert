@@ -53,8 +53,8 @@ for (let i = 0; i < files.length; i++) {
   const file = files[i];
   const ext = file.name.split(".").pop();
   const path = `${session.user.id}/${crypto.randomUUID()}.${ext}`;
-
-  console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name}`);
+  
+  console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name} ${path}`);
 
   const { data, error: uploadError } = await supabase.storage
     .from("receipts")
