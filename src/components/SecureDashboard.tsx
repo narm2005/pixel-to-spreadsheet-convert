@@ -394,8 +394,8 @@ const SecureDashboard = () => {
       }
     );
 
-    // // Export merged data
-    // await handleExport(format, mergedData);
+    // Export merged data
+    await handleExport(format, mergedData);
 
   } catch (err: any) {
     toast({
