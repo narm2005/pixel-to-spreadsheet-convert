@@ -63,7 +63,7 @@ const handleExportWrapper = (format: 'excel' | 'csv' | 'json', displayData) => {
   }
 
   // Call the real export logic directly
-  handleExport(format, displayData);
+  exportData(format, displayData);
   console.log(`Exporting data in ${format} format`, displayData);
 };
 
