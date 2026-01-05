@@ -421,7 +421,7 @@ const SecureDashboard = () => {
         return (
           <ProcessedFilesList
             files={processedFiles}
-            onDownload={handleFileDownload}
+            onDownload={handleFilesDownload}
             userTier={userTier}
           />
         );
