@@ -66,12 +66,12 @@ const SecureDashboard = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (!loading && !session) {
-      console.log("No session found, redirecting to signin");
-      navigate("/signin");
-    }
-  }, [session, loading, navigate]);
+  // useEffect(() => {
+  //   if (!loading && !session) {
+  //     console.log("No session found, redirecting to signin");
+  //     navigate("/signin");
+  //   }
+  // }, [session, loading, navigate]);
 
   
   const fetchUserProfile = async () => {
@@ -341,21 +341,21 @@ const SecureDashboard = () => {
     }
   }, [user]);
   
-  useEffect(() => {
-    console.log("Loading:",loading);
-    if (loading) return;          // 🚫 wait until auth is resolved
-    if (!user) return;            // 🚫 still not logged in
-
-      fetchProcessedFiles();
-      fetchUserFileCount();
-    }, [loading, user]);
-
   // useEffect(() => {
-  //   if (processedData) {
+  //   console.log("Loading:",loading);
+  //   if (loading) return;          // 🚫 wait until auth is resolved
+  //   if (!user) return;            // 🚫 still not logged in
+
   //     fetchProcessedFiles();
   //     fetchUserFileCount();
-  //   }
-  // }, [processedData]);
+  //   }, [loading, user]);
+
+  useEffect(() => {
+    if (processedData) {
+      fetchProcessedFiles();
+      fetchUserFileCount();
+    }
+  }, [processedData]);
 
   /* ===========================
      🔑 CRITICAL FIX
