@@ -43,50 +43,55 @@ export const useSecureFileUpload = () => {
   try {
     const uploaded: { id: string; fileName: string }[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const path = `${user.id}/${Date.now()}-${file.name}`;
+const {
+  data: { session },
+} = await supabase.auth.getSession();
 
-      console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name}`);
+if (!session) throw new Error("No active session");
 
-      const { data, error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(path, file, { upsert: false });
+for (let i = 0; i < files.length; i++) {
+  const file = files[i];
+  const ext = file.name.split(".").pop();
+  const path = `${session.user.id}/${crypto.randomUUID()}.${ext}`;
 
-      if (uploadError) {
-        console.error("❌ Storage upload error:", uploadError);
-        toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
-        continue; // skip this file
-      }
-      console.log("✅ Upload successful:", path);
+  console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name}`);
 
-      const { data: dbData, error: dbError } = await supabase
-      .from("processed_files")
-      .insert({
-        user_id: user.id,
-        file_name: path,
-        original_file_name: file.name,
-        file_size: file.size,
-        merchant: null,
-        total: null,
-        item_count: null,
-        processed_data: null,
-        confidence_score: null,
-        status: "processing",
-      })
-      .select()
-      .single();
+  const { data, error: uploadError } = await supabase.storage
+    .from("receipts")
+    .upload(path, file);
 
-      if (dbError) {
-        console.error("❌ DB insert failed:", dbError);
-      } else {
-        console.log("✅ DB insert successful:", dbData.id);
-      }
-      uploaded.push({ id: data.id, fileName: path });
+  if (uploadError) {
+    console.error("❌ Storage upload error:", uploadError);
+    toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+    continue;
+  }
 
-      const progress = 30 + Math.round(((i + 1) / files.length) * 30);
-      setUploadProgress(progress);
-    }
+  console.log("✅ Upload successful:", path);
+
+  const { data: dbData, error: dbError } = await supabase
+    .from("processed_files")
+    .insert({
+      user_id: session.user.id,
+      file_name: path,
+      original_file_name: file.name,
+      file_size: file.size,
+      status: "processing",
+    })
+    .select()
+    .single();
+
+  if (dbError) {
+    console.error("❌ DB insert failed:", dbError);
+    await supabase.storage.from("receipts").remove([path]);
+    continue;
+  }
+
+  uploaded.push({ id: dbData.id, fileName: path });
+
+  const progress = 30 + Math.round(((i + 1) / files.length) * 30);
+  setUploadProgress(progress);
+}
+
 
     const { data, error } = await supabase.functions.invoke("process-receipt", {
       body: {
