@@ -43,9 +43,9 @@ export const useSecureFileUpload = () => {
   try {
     const uploaded: { id: string; fileName: string }[] = [];
 
-const {
-  data: { session },
-} = await supabase.auth.getSession();
+// const {
+//   data: { session },
+// } = await supabase.auth.getSession();
 
 if (!session) throw new Error("No active session");
 
