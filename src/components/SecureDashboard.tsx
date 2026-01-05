@@ -238,6 +238,80 @@ const SecureDashboard = () => {
     }
   };
 
+  
+  const handleExport = async (
+  format: 'excel' | 'csv' | 'json',
+  mergedData: any
+) => {
+  try {
+    if (!mergedData || !mergedData.combinedItems?.length) {
+      toast({
+        title: "No data to export",
+        description: "Please process some files first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Example: Export JSON
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(mergedData.combinedItems, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipts_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Example: Export CSV
+    if (format === 'csv') {
+      const items = mergedData.combinedItems;
+      const headers = Object.keys(items[0]);
+      const csv = [
+        headers.join(','),
+        ...items.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipts_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // TODO: Add Excel export (premium)
+    if (format === 'excel') {
+      toast({
+        title: "Premium Feature",
+        description: "Excel export not implemented yet.",
+        variant: "destructive",
+      });
+    }
+
+    toast({
+      title: "Export successful",
+      description: `Data exported as ${format}`,
+    });
+  } catch (err: any) {
+    console.error('Export failed:', err);
+    toast({
+      title: "Export failed",
+      description: err.message || 'Unknown error',
+      variant: "destructive",
+    });
+  }
+};
+
+
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (!error) {
