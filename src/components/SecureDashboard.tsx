@@ -48,7 +48,6 @@ const SecureDashboard = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
-    handleExport,
   } = useSecureFileUpload();
 
   // Handle OAuth redirect on component mount
@@ -310,7 +309,18 @@ const SecureDashboard = () => {
     });
   }
 };
+const handleExportRequest = (
+  format: 'excel' | 'csv' | 'json',
+  displayData: any
+) => {
+  // Premium gate
+  if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
+    navigate('/pricing');
+    return;
+  }
 
+  exportData(format, displayData);
+};
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -476,7 +486,7 @@ const SecureDashboard = () => {
                 <ResultsSection
                   processedData={processedData}
                   mergedData={mergedData}
-                  onExport={handleExportWrapper}
+                  onExport={handleExportRequest}
                   userTier={userTier}
                 />
               }
@@ -484,7 +494,7 @@ const SecureDashboard = () => {
               <ResultsSection
                 processedData={processedData}
                 mergedData={mergedData}
-                onExport={handleExportWrapper}
+                onExport={handleExportRequest}
                 userTier={userTier}
               />
             </PremiumGate>
