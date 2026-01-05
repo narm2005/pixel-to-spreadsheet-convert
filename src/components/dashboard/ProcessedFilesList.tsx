@@ -149,7 +149,7 @@ const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({
                         key={format}
                         size="sm"
                         variant="outline"
-                        onClick={() => onDownload(file.id, format)}
+                        onClick={() => onDownload([file.id], format)}
                         className="flex items-center gap-1"
                       >
                         <Download className="h-3 w-3" />
