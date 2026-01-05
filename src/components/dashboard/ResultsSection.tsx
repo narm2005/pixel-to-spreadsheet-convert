@@ -50,21 +50,8 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
     }
   ];
 
-const handleExportWrapper = (format: 'excel' | 'csv' | 'json', displayData) => {
-  const option = exportOptions.find(opt => opt.format === format);
-  if (option?.premium && userTier === 'freemium') {
-    toast({
-      title: "Premium Feature",
-      description: `${format.toUpperCase()} export is available for Premium users only.`,
-      variant: "destructive",
-    });
-    navigate('/pricing');
-    return;
-  }
-
-  // Call the real export logic directly
-  exportData(format, displayData);
-  console.log(`Exporting data in ${format} format`, displayData);
+const handleExportClick = (format: 'excel' | 'csv' | 'json') => {
+  onExport(format, displayData);
 };
 
 
@@ -127,7 +114,7 @@ const handleExportWrapper = (format: 'excel' | 'csv' | 'json', displayData) => {
                           ? 'opacity-50 cursor-not-allowed' 
                           : 'hover:bg-gray-50'
                       }`}
-                      onClick={() => handleExportWrapper(option.format)}
+                      onClick={() => handleExportClick(option.format)}
                       disabled={option.premium && userTier === 'freemium' && false}
                     >
                       <div className="flex items-center gap-2">
