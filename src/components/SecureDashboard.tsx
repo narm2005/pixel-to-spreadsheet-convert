@@ -336,6 +336,13 @@ const handleExportRequest = (
   format: 'excel' | 'csv' | 'json'
 ) => {
   try {
+
+    // 🔒 Normalize IDs (CRITICAL FIX)
+    const normalizedFileIds = Array.isArray(fileIds)
+      ? fileIds
+      : [fileIds];
+
+    console.log('📥 Download request for IDs:', normalizedFileIds);
     // Premium check
     if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
       toast({
@@ -360,7 +367,7 @@ const handleExportRequest = (
     const { data: filesData, error } = await supabase
       .from('processed_files')
       .select('processed_data, file_name')
-      .in('id', fileIds);
+      .in('id', normalizedFileIds);
 
     if (error) throw error;
 
@@ -373,19 +380,17 @@ const handleExportRequest = (
       return;
     }
 
-    // Merge all file data for export
+    // 🔗 Merge data
     const mergedData = filesData.reduce(
       (acc, file) => {
         const receipt = file.processed_data;
         if (!receipt) return acc;
 
-        // Update summary
         acc.summary.totalFiles += 1;
-        acc.summary.totalAmount += parseFloat(receipt.total);
-        acc.summary.totalItems += receipt.items.length;
+        acc.summary.totalAmount += Number(receipt.total || 0);
+        acc.summary.totalItems += receipt.items?.length || 0;
 
-        // Combine items
-        const items = receipt.items.map(item => ({
+        const items = receipt.items?.map((item: any) => ({
           receiptNumber: acc.summary.totalFiles,
           merchant: receipt.merchant,
           date: receipt.date,
@@ -393,18 +398,23 @@ const handleExportRequest = (
           amount: item.amount,
           category: item.category || '',
           fileName: file.file_name || 'receipt',
-        }));
+        })) || [];
 
         acc.combinedItems.push(...items);
         return acc;
       },
       {
-        summary: { totalFiles: 0, totalAmount: 0, totalItems: 0, processedAt: new Date().toISOString() },
+        summary: {
+          totalFiles: 0,
+          totalAmount: 0,
+          totalItems: 0,
+          processedAt: new Date().toISOString(),
+        },
         combinedItems: [] as any[],
       }
     );
 
-    // Export merged data
+    // 📤 Export
     await exportData(format, mergedData);
 
   } catch (err: any) {
