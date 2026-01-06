@@ -199,6 +199,7 @@ const SecureDashboard = () => {
   };
 
   const fetchProcessedFiles = async () => {
+    console.log("User:",user);
     if (!user) return;
 
     try {
