@@ -17,10 +17,25 @@ interface ExpenseChartProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, type }) => {
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>No Analytics Available</CardTitle>
+          <CardDescription>
+            Process receipts to unlock insights.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8 text-gray-500">
+          Analytics will appear here once data is available.
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (type === 'monthly') {
-    // Group by month for monthly trend
     const monthlyData = data.reduce((acc, item) => {
-      const existing = acc.find(month => month.month_year === item.month_year);
+      const existing = acc.find(m => m.month_year === item.month_year);
       if (existing) {
         existing.total_amount += Number(item.total_amount);
         existing.transaction_count += item.transaction_count;
@@ -28,27 +43,25 @@ const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, type }) => {
         acc.push({
           month_year: item.month_year,
           total_amount: Number(item.total_amount),
-          transaction_count: item.transaction_count
+          transaction_count: item.transaction_count,
         });
       }
       return acc;
-    }, [] as any[]).sort((a, b) => a.month_year.localeCompare(b.month_year));
+    }, [] as any[]);
 
     return (
       <Card>
         <CardHeader>
           <CardTitle>Monthly Spending Trend</CardTitle>
-          <CardDescription>Your spending over time</CardDescription>
         </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+        <CardContent className="h-[350px]">
+          <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month_year" />
               <YAxis />
-              <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Amount']} />
-              <Legend />
-              <Bar dataKey="total_amount" fill="#8884d8" />
+              <Tooltip />
+              <Bar dataKey="total_amount" />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -56,17 +69,14 @@ const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, type }) => {
     );
   }
 
-  // Group by category for pie chart
   const categoryData = data.reduce((acc, item) => {
-    const existing = acc.find(cat => cat.category === item.category);
+    const existing = acc.find(c => c.category === item.category);
     if (existing) {
       existing.total_amount += Number(item.total_amount);
-      existing.transaction_count += item.transaction_count;
     } else {
       acc.push({
         category: item.category,
         total_amount: Number(item.total_amount),
-        transaction_count: item.transaction_count
       });
     }
     return acc;
@@ -76,31 +86,27 @@ const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, type }) => {
     <Card>
       <CardHeader>
         <CardTitle>Spending by Category</CardTitle>
-        <CardDescription>Breakdown of expenses by category</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+      <CardContent className="h-[350px]">
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={categoryData}
+              dataKey="total_amount"
               cx="50%"
               cy="50%"
-              labelLine={false}
-              label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="total_amount"
             >
-              {categoryData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              {categoryData.map((_, index) => (
+                <Cell key={index} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Amount']} />
+            <Tooltip />
           </PieChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
   );
 };
+
 
 export default ExpenseChart;
