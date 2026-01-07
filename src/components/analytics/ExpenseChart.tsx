@@ -17,6 +17,7 @@ interface ExpenseChartProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, type }) => {
+  console.log("DATA from analytics:", data);
   if (!data || data.length === 0) {
     return (
       <Card>
