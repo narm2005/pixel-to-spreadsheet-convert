@@ -426,42 +426,42 @@ const handleExportRequest = (
     });
   }
 };
-
-
-  useEffect(() => {
-    if (user) {
-      fetchUserProfile();
-      fetchProcessedFiles();
-      fetchUserFileCount();
-    }
-  }, [user]);
   
-  // useEffect(() => {
-  //   console.log("Loading:",loading);
-  //   if (loading) return;          // 🚫 wait until auth is resolved
-  //   if (!user) return;            // 🚫 still not logged in
+/* ===========================
+   1️⃣ AUTH-READY INITIAL LOAD
+   Runs after refresh / login
+   =========================== */
+useEffect(() => {
+  if (loading) return;     // wait for auth resolution
+  if (!user) return;       // not logged in
 
-  //     fetchProcessedFiles();
-  //     fetchUserFileCount();
-  //   }, [loading, user]);
+  fetchUserProfile();
+  fetchProcessedFiles();
+  fetchUserFileCount();
+}, [loading, user]);
 
-  useEffect(() => {
-    if (processedData) {
-      fetchProcessedFiles();
-      fetchUserFileCount();
-    }
-  }, [processedData]);
+/* ===========================
+   2️⃣ REFRESH AFTER FILE PROCESS
+   =========================== */
+useEffect(() => {
+  if (loading) return;
+  if (!user) return;
+  if (!processedData) return;
 
-  /* ===========================
-     🔑 CRITICAL FIX
-     File History must refetch
-     when tab is opened
-     =========================== */
-  useEffect(() => {
-  if (!loading && activeSection === "history" && user) {
-    fetchProcessedFiles();
-  }
-  }, [activeSection, loading, user]);
+  fetchProcessedFiles();
+  fetchUserFileCount();
+}, [processedData, loading, user]);
+
+/* ===========================
+   3️⃣ LOAD HISTORY TAB ON OPEN
+   =========================== */
+useEffect(() => {
+  if (loading) return;
+  if (!user) return;
+  if (activeSection !== "history") return;
+
+  fetchProcessedFiles();
+}, [activeSection, loading, user]);
 
 
   // Sidebar menu items
