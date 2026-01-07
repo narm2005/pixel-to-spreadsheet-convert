@@ -9,84 +9,102 @@ export const useSecureFileUpload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processedData, setProcessedData] = useState<any>(null);
   const [mergedData, setMergedData] = useState<any>(null);
+
   const { toast } = useToast();
   const { user, session } = useAuth();
 
-  // Backward compatibility for single file
-  const selectedFile = selectedFiles.length > 0 ? selectedFiles[0] : null;
+  const selectedFile = selectedFiles[0] ?? null;
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    console.log('🔍 Files selected:', files.length, files.map(f => f.name));
-    handleFilesValidation(files);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFiles(Array.from(e.target.files ?? []));
   };
 
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files || []);
-    console.log('🔍 Files dropped:', files.length, files.map(f => f.name));
-    handleFilesValidation(files);
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setSelectedFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
-  const handleFilesValidation = (files: File[]) => {
-    if (files.length === 0) return;
+  const handleProcessFile = async (files: File[]) => {
+  console.log("🚀 Starting file processing");
 
-    console.log('🔍 Validating files:', files.length);
-    
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp', 'application/pdf'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    const maxFiles = 10; // Maximum files per upload
+  if (!user || !session) {
+    toast({ title: "Please sign in", variant: "destructive" });
+    return;
+  }
 
-    if (files.length > maxFiles) {
-      console.log('❌ Too many files:', files.length, 'max:', maxFiles);
-      toast({
-        title: "Too many files",
-        description: `Please select no more than ${maxFiles} files at once.`,
-        variant: "destructive",
-      });
-      return;
-    }
+  if (!files || files.length === 0) {
+    toast({ title: "No files selected", variant: "destructive" });
+    return;
+  }
 
-    const invalidFiles = files.filter(file => 
-      !allowedTypes.includes(file.type) || file.size > maxSize
-    );
+  setIsProcessing(true);
+  setUploadProgress(5);
 
-    if (invalidFiles.length > 0) {
-      console.log('❌ Invalid files:', invalidFiles.map(f => ({ name: f.name, type: f.type, size: f.size })));
-      toast({
-        title: "Invalid files",
-        description: `${invalidFiles.length} file(s) are invalid. Please ensure all files are images (PNG, JPG, JPEG, GIF, BMP, WebP) or PDF files under 10MB.`,
-        variant: "destructive",
-      });
-      return;
-    }
+  try {
+    const uploaded: { id: string; fileName: string }[] = [];
 
-    setSelectedFiles(files);
-    setProcessedData(null);
-    setMergedData(null);
-    
-    console.log('✅ Files validated and set:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
-    
-    const fileNames = files.map(f => f.name).join(", ");
-    const displayText = files.length === 1 
-      ? `Selected: ${files[0].name}`
-      : `Selected ${files.length} files: ${fileNames.length > 100 ? fileNames.substring(0, 100) + "..." : fileNames}`;
-    
-    toast({
-      title: "Files selected",
-      description: displayText,
+// const {
+//   data: { session },
+// } = await supabase.auth.getSession();
+
+if (!session) throw new Error("No active session");
+
+for (let i = 0; i < files.length; i++) {
+  const file = files[i];
+  const ext = file.name.split(".").pop();
+  const path = `${session.user.id}/${crypto.randomUUID()}.${ext}`;
+  
+  console.log(`🚀 Uploading ${i + 1}/${files.length}: ${file.name} ${path}`);
+
+  const { data, error: uploadError } = await supabase.storage
+    .from("receipts")
+    .upload(path, file);
+
+  if (uploadError) {
+    console.error("❌ Storage upload error:", uploadError);
+    toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+    continue;
+  }
+
+  console.log("✅ Upload successful:", path);
+
+  const { data: dbData, error: dbError } = await supabase
+    .from("processed_files")
+    .insert({
+      user_id: session.user.id,
+      file_name: path,
+      original_file_name: file.name,
+      file_size: file.size,
+      status: "processing",
+    })
+    .select()
+    .single();
+
+  if (dbError) {
+    console.error("❌ DB insert failed:", dbError);
+    await supabase.storage.from("receipts").remove([path]);
+    continue;
+  }
+
+  uploaded.push({ id: dbData.id, fileName: path });
+
+  const progress = 30 + Math.round(((i + 1) / files.length) * 30);
+  setUploadProgress(progress);
+}
+
+
+    const { data, error } = await supabase.functions.invoke("process-receipt", {
+      body: {
+        fileIds: uploaded.map(f => f.id),
+        filePaths: uploaded.map(f => f.fileName), // ✅ renamed
+      },
+      // headers: {
+      //   Authorization: `Bearer ${session.access_token}`,
+      // },
     });
-  };
 
-  const handleProcessFile = async () => {
-    console.log('🚀 handleProcessFile called');
-    console.log('📊 Current state:', {
-      selectedFilesCount: selectedFiles.length,
-      hasUser: !!user,
-      hasSession: !!session,
-      userId: user?.id,
-      sessionValid: !!session?.access_token
-    });
+    if (error) throw error;
+    if (!data) throw new Error("Empty Edge Function response");
 
     if (!user || !session) {
       console.error('❌ No user or session available');
@@ -298,30 +316,14 @@ export const useSecureFileUpload = () => {
     }
   };
 
-  const handleExport = async (format: 'excel' | 'csv' | 'json', exportData: any) => {
-    console.log('📤 handleExport called:', {
-      format,
-      hasExportData: !!exportData,
-      hasUser: !!user,
-      userId: user?.id
-    });
+    toast({ title: "Processing complete" });
 
-    if (!exportData || !user) {
-      console.log('❌ Cannot export:', { hasData: !!exportData, hasUser: !!user });
-      toast({
-        title: "Missing data",
-        description: "Please process your files before exporting.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    console.log('📤 Starting export:', {
-      format,
-      userId: user.id,
-      dataType: typeof exportData,
-      hasItems: !!exportData?.combinedItems,
-      itemCount: exportData?.combinedItems?.length
+  } catch (err: any) {
+    console.error(err);
+    toast({
+      title: "Processing failed",
+      description: err.message ?? "Unknown error",
+      variant: "destructive",
     });
     
     // Check user tier for premium features
@@ -448,6 +450,5 @@ export const useSecureFileUpload = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
-    handleExport,
   };
 };

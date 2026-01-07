@@ -48,7 +48,6 @@ const SecureDashboard = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
-    handleExport,
   } = useSecureFileUpload();
 
   // Handle OAuth redirect on component mount
@@ -66,13 +65,14 @@ const SecureDashboard = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (!loading && !session) {
-      console.log("No session found, redirecting to signin");
-      navigate("/signin");
-    }
-  }, [session, loading, navigate]);
+  // useEffect(() => {
+  //   if (!loading && !session) {
+  //     console.log("No session found, redirecting to signin");
+  //     navigate("/signin");
+  //   }
+  // }, [session, loading, navigate]);
 
+  
   const fetchUserProfile = async () => {
     if (!user) return;
 
@@ -199,6 +199,7 @@ const SecureDashboard = () => {
   };
 
   const fetchProcessedFiles = async () => {
+    console.log("User:",user);
     if (!user) return;
 
     try {
@@ -208,6 +209,8 @@ const SecureDashboard = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      console.log("DATA:",data);
+      
       if (error) throw error;
 
       const formattedFiles = data?.map(file => ({
@@ -235,6 +238,91 @@ const SecureDashboard = () => {
     }
   };
 
+  
+  const exportData = async (
+  format: 'excel' | 'csv' | 'json',
+  mergedData: any
+) => {
+  try {
+    if (!mergedData || !mergedData.combinedItems?.length) {
+      toast({
+        title: "No data to export",
+        description: "Please process some files first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Example: Export JSON
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(mergedData.combinedItems, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipts_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // Example: Export CSV
+    if (format === 'csv') {
+      const items = mergedData.combinedItems;
+      const headers = Object.keys(items[0]);
+      const csv = [
+        headers.join(','),
+        ...items.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipts_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // TODO: Add Excel export (premium)
+    if (format === 'excel') {
+      toast({
+        title: "Premium Feature",
+        description: "Excel export not implemented yet.",
+        variant: "destructive",
+      });
+    }
+
+    toast({
+      title: "Export successful",
+      description: `Data exported as ${format}`,
+    });
+  } catch (err: any) {
+    console.error('Export failed:', err);
+    toast({
+      title: "Export failed",
+      description: err.message || 'Unknown error',
+      variant: "destructive",
+    });
+  }
+};
+const handleExportRequest = (
+  format: 'excel' | 'csv' | 'json',
+  displayData: any
+) => {
+  // Premium gate
+  if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
+    navigate('/pricing');
+    return;
+  }
+
+  exportData(format, displayData);
+};
+
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (!error) {
@@ -244,8 +332,19 @@ const SecureDashboard = () => {
     console.log("User signed out");
   };
 
-  const handleFileDownload = async (fileId: string, format: 'excel' | 'csv' | 'json') => {
-    // Check if user has premium access for non-CSV formats
+  const handleFilesDownload = async (
+  fileIds: string[],
+  format: 'excel' | 'csv' | 'json'
+) => {
+  try {
+
+    // 🔒 Normalize IDs (CRITICAL FIX)
+    const normalizedFileIds = Array.isArray(fileIds)
+      ? fileIds
+      : [fileIds];
+
+    console.log('📥 Download request for IDs:', normalizedFileIds);
+    // Premium check
     if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
       toast({
         title: "Premium Feature",
@@ -256,67 +355,114 @@ const SecureDashboard = () => {
       return;
     }
 
-    try {
-      const { data: fileData, error } = await supabase
-        .from('processed_files')
-        .select('processed_data')
-        .eq('id', fileId)
-        .single();
-
-      if (error) throw error;
-
-      if (fileData && fileData.processed_data) {
-        const receipt = fileData.processed_data;
-
-        const convertedMergedData = {
-          summary: {
-            totalFiles: 1,
-            totalAmount: parseFloat(receipt.total),
-            totalItems: receipt.items.length,
-            processedAt: receipt.date || new Date().toISOString()
-          },
-          combinedItems: receipt.items.map((item, index) => ({
-            receiptNumber: 1,
-            merchant: receipt.merchant,
-            date: receipt.date,
-            description: item.description,
-            amount: item.amount,
-            category: item.category || '',
-            fileName: receipt.fileName || 'receipt'
-          }))
-        };
-
-        await handleExport(format, convertedMergedData);
-      } else {
-        toast({
-          title: "No data available",
-          description: "This file hasn't been processed yet or has no data.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
+    if (!fileIds.length) {
       toast({
-        title: "Download failed",
-        description: error.message,
+        title: "No files selected",
+        description: "Please select at least one file to export.",
         variant: "destructive",
       });
+      return;
     }
-  };
 
-  useEffect(() => {
-    if (user) {
-      fetchUserProfile();
-      fetchProcessedFiles();
-      fetchUserFileCount();
-    }
-  }, [user]);
+    // Fetch all processed files from Supabase
+    const { data: filesData, error } = await supabase
+      .from('processed_files')
+      .select('processed_data, file_name')
+      .in('id', normalizedFileIds);
 
-  useEffect(() => {
-    if (processedData) {
-      fetchProcessedFiles();
-      fetchUserFileCount();
+    if (error) throw error;
+
+    if (!filesData?.length) {
+      toast({
+        title: "No data available",
+        description: "Selected files have not been processed yet or have no data.",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [processedData]);
+
+    // 🔗 Merge data
+    const mergedData = filesData.reduce(
+      (acc, file) => {
+        const receipt = file.processed_data;
+        if (!receipt) return acc;
+
+        acc.summary.totalFiles += 1;
+        acc.summary.totalAmount += Number(receipt.total || 0);
+        acc.summary.totalItems += receipt.items?.length || 0;
+
+        const items = receipt.items?.map((item: any) => ({
+          receiptNumber: acc.summary.totalFiles,
+          merchant: receipt.merchant,
+          date: receipt.date,
+          description: item.description,
+          amount: item.amount,
+          category: item.category || '',
+          fileName: file.file_name || 'receipt',
+        })) || [];
+
+        acc.combinedItems.push(...items);
+        return acc;
+      },
+      {
+        summary: {
+          totalFiles: 0,
+          totalAmount: 0,
+          totalItems: 0,
+          processedAt: new Date().toISOString(),
+        },
+        combinedItems: [] as any[],
+      }
+    );
+
+    // 📤 Export
+    await exportData(format, mergedData);
+
+  } catch (err: any) {
+    toast({
+      title: "Download failed",
+      description: err.message || "Unknown error",
+      variant: "destructive",
+    });
+  }
+};
+  
+/* ===========================
+   1️⃣ AUTH-READY INITIAL LOAD
+   Runs after refresh / login
+   =========================== */
+useEffect(() => {
+  if (loading) return;     // wait for auth resolution
+  if (!user) return;       // not logged in
+
+  fetchUserProfile();
+  fetchProcessedFiles();
+  fetchUserFileCount();
+}, [loading, user]);
+
+/* ===========================
+   2️⃣ REFRESH AFTER FILE PROCESS
+   =========================== */
+useEffect(() => {
+  if (loading) return;
+  if (!user) return;
+  if (!processedData) return;
+
+  fetchProcessedFiles();
+  fetchUserFileCount();
+}, [processedData, loading, user]);
+
+/* ===========================
+   3️⃣ LOAD HISTORY TAB ON OPEN
+   =========================== */
+useEffect(() => {
+  if (loading) return;
+  if (!user) return;
+  if (activeSection !== "history") return;
+
+  fetchProcessedFiles();
+}, [activeSection, loading, user]);
+
 
   // Sidebar menu items
   const menuItems = [
@@ -340,7 +486,7 @@ const SecureDashboard = () => {
               uploadProgress={uploadProgress}
               onFileSelect={handleFileSelect}
               onDrop={handleDrop}
-              onProcessFile={handleProcessFile}
+              onProcessFile={() => handleProcessFile(selectedFiles)}
               userTier={userTier}
               fileCount={fileCount}
             />
@@ -351,7 +497,7 @@ const SecureDashboard = () => {
                 <ResultsSection
                   processedData={processedData}
                   mergedData={mergedData}
-                  onExport={handleExport}
+                  onExport={handleExportRequest}
                   userTier={userTier}
                 />
               }
@@ -359,7 +505,7 @@ const SecureDashboard = () => {
               <ResultsSection
                 processedData={processedData}
                 mergedData={mergedData}
-                onExport={handleExport}
+                onExport={handleExportRequest}
                 userTier={userTier}
               />
             </PremiumGate>
@@ -370,7 +516,7 @@ const SecureDashboard = () => {
         return (
           <ProcessedFilesList
             files={processedFiles}
-            onDownload={handleFileDownload}
+            onDownload={handleFilesDownload}
             userTier={userTier}
           />
         );

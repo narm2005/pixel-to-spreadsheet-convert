@@ -151,6 +151,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       return { error };
     }
+
+    setUser(null);
+    setSession(null);
+    return { error: null };
   };
 
   // 🚀 GOOGLE LOGIN

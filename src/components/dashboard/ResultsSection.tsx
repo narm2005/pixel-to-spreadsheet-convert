@@ -50,15 +50,10 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
     }
   ];
 
-  const handleExport = (format: 'excel' | 'csv' | 'json', displayData) => {
-    const option = exportOptions.find(opt => opt.format === format);
-    if (option?.premium && userTier === 'freemium') {
-      navigate('/pricing');
-      return;
-    }
-    onExport(format,displayData);
-    console.log(`Exporting data in ${format} format`, displayData);
-  };
+const handleExportClick = (format: 'excel' | 'csv' | 'json') => {
+  onExport(format, displayData);
+};
+
 
   return (
     <Card className="mb-8">
@@ -119,7 +114,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
                           ? 'opacity-50 cursor-not-allowed' 
                           : 'hover:bg-gray-50'
                       }`}
-                      onClick={() => handleExport(option.format)}
+                      onClick={() => handleExportClick(option.format)}
                       disabled={option.premium && userTier === 'freemium' && false}
                     >
                       <div className="flex items-center gap-2">
