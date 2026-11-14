@@ -1,10 +1,5 @@
-import { lemonSqueezySetup } from '@lemonsqueezy/lemonsqueezy.js';
-
-// Initialize Lemon Squeezy
-lemonSqueezySetup({
-  apiKey: import.meta.env.VITE_LEMONSQUEEZY_API_KEY,
-  onError: (error) => console.error('Lemon Squeezy Error:', error),
-});
+// Only public values belong here: anything in a VITE_ variable ships to every visitor's browser.
+// The Lemon Squeezy API key and webhook secret live only in the Supabase edge function secrets.
 //console.log('Lemon Squeezy PREMIUM Monthly:', import.meta.env.VITE_LEMONSQUEEZY_PREMIUM_MONTHLY_VARIANT_ID);
 export const LEMONSQUEEZY_CONFIG = {
   storeId: import.meta.env.VITE_LEMONSQUEEZY_STORE_ID,
@@ -12,7 +7,6 @@ export const LEMONSQUEEZY_CONFIG = {
     premium_monthly: import.meta.env.VITE_LEMONSQUEEZY_PREMIUM_MONTHLY_VARIANT_ID,
     premium_yearly: import.meta.env.VITE_LEMONSQUEEZY_PREMIUM_YEARLY_VARIANT_ID,
   },
-  webhookSecret: import.meta.env.VITE_LEMONSQUEEZY_WEBHOOK_SECRET,
 };
 
 export interface CheckoutData {

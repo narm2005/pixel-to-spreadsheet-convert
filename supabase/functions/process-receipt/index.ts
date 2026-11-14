@@ -1,3 +1,14 @@
+const BACKEND_URL = Deno.env.get('BACKEND_URL') ?? 'https://receipt2xcl.onrender.com';
+const MAX_FILES_PER_REQUEST = 10;
+// Encode in chunks: spreading a multi-MB photo into String.fromCharCode overflows the call stack.
+function toBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -7,7 +18,6 @@ Deno.serve(async (req)=>{
   console.log('🚀 Process-receipt function started');
   console.log('📝 Request method:', req.method);
   console.log('📝 Request URL:', req.url);
-  console.log('📝 Headers received:', Object.fromEntries(req.headers.entries()));
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     console.log('✅ CORS preflight handled');
@@ -170,6 +180,41 @@ Deno.serve(async (req)=>{
     const fileNamesArray = Array.isArray(fileNames) ? fileNames : [
       fileNames
     ];
+    if (fileIdsArray.length === 0 || fileIdsArray.length !== fileNamesArray.length || fileIdsArray.length > MAX_FILES_PER_REQUEST) {
+      return new Response(JSON.stringify({
+        error: 'INVALID_REQUEST',
+        message: `Send between 1 and ${MAX_FILES_PER_REQUEST} files, with one id per file name.`
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 400
+      });
+    }
+    // Security: only process files that belong to the signed-in user. The service-role client
+    // bypasses row-level security, so without this check a user could pass someone else's file.
+    const { data: ownedRows, error: ownedError } = await supabase.from('processed_files').select('id, file_name').eq('user_id', user.id).in('id', fileIdsArray);
+    if (ownedError) {
+      throw new Error('Failed to verify file ownership');
+    }
+    const ownedById = new Map((ownedRows ?? []).map((row)=>[
+        row.id,
+        row.file_name
+      ]));
+    const allOwned = fileIdsArray.every((id, i)=>ownedById.get(id) === fileNamesArray[i] && String(fileNamesArray[i]).startsWith(`${user.id}/`));
+    if (!allOwned) {
+      return new Response(JSON.stringify({
+        error: 'FORBIDDEN',
+        message: 'One or more files do not belong to you.'
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 403
+      });
+    }
     console.log('📁 Processing files array:', {
       totalFiles: fileIdsArray.length,
       fileIds: fileIdsArray,
@@ -200,7 +245,7 @@ Deno.serve(async (req)=>{
         await supabase.from('processed_files').update({
           status: 'failed',
           updated_at: new Date().toISOString()
-        }).eq('id', fileId);
+        }).eq('id', fileId).eq('user_id', user.id);
         throw new Error(`Failed to download file: ${fileName} - ${downloadError.message}`);
       }
       console.log('✅ File downloaded successfully:', {
@@ -211,7 +256,7 @@ Deno.serve(async (req)=>{
       // Convert file to base64 for backend API
       console.log('🔄 Converting file to base64...');
       const arrayBuffer = await fileData.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const base64 = toBase64(new Uint8Array(arrayBuffer));
       console.log('🔄 File converted to base64:', {
         fileName,
         base64Length: base64.length,
@@ -226,18 +271,17 @@ Deno.serve(async (req)=>{
     }
     console.log('📦 Prepared payload for backend:', {
       filesCount: filesPayload.length,
-      backendUrl: 'https://receipt2xcl.onrender.com/process'
+      backendUrl: `${BACKEND_URL}/process`
     });
     // Call your backend API
     console.log('🔗 Calling external backend API...');
-    console.log('📤 Sending payload to backend:', JSON.stringify({
-      files: filesPayload
-    }, null, 2));
-    const backendResponse = await fetch("https://receipt2xcl.onrender.com/process", {
+    const backendResponse = await fetch(`${BACKEND_URL}/process`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'accept': 'application/json'
+        'accept': 'application/json',
+        // Shared secret: the backend rejects requests without it.
+        'X-API-Key': Deno.env.get('BACKEND_API_KEY') ?? ''
       },
       body: JSON.stringify({
         files: filesPayload
@@ -263,7 +307,6 @@ Deno.serve(async (req)=>{
       hasData: !!backendData,
       dataKeys: backendData ? Object.keys(backendData) : [],
       dataType: typeof backendData,
-      fullResponse: JSON.stringify(backendData, null, 2)
     });
     // Process the backend response and update database records
     for(let i = 0; i < fileIdsArray.length; i++){
@@ -271,7 +314,7 @@ Deno.serve(async (req)=>{
       const fileName = fileNamesArray[i];
       // Extract data for this specific file from backend response
       // Your backend returns { "files": [...] } format
-      const fileResult = backendData.files?.[i];
+      const fileResult = (backendData.files ?? backendData.receipts)?.[i];
       if (!fileResult) {
         console.error(`❌ No result found for file ${i + 1} in backend response`);
         throw new Error(`No processing result found for file: ${fileName}`);
@@ -284,6 +327,14 @@ Deno.serve(async (req)=>{
         total: fileResult?.total,
         itemsCount: fileResult?.items?.length
       });
+      if (fileResult.error) {
+        console.error(`❌ Backend could not process file ${i + 1}:`, fileResult.error);
+        await supabase.from('processed_files').update({
+          status: 'failed',
+          updated_at: new Date().toISOString()
+        }).eq('id', fileId).eq('user_id', user.id);
+        continue;
+      }
       const processedResult = {
         fileId,
         fileName,
@@ -389,7 +440,7 @@ Deno.serve(async (req)=>{
       mergedDataSummary: mergedData.summary,
       totalAmount: mergedData.summary.totalAmount,
       totalItems: mergedData.summary.totalItems,
-      backendUsed: 'https://receipt2xcl.onrender.com/process'
+      backendUsed: `${BACKEND_URL}/process`
     });
     const responseData = {
       receipts: processedResults,
@@ -419,8 +470,7 @@ Deno.serve(async (req)=>{
     return new Response(JSON.stringify({
       error: 'PROCESSING_FAILED',
       message: error.message,
-      timestamp: new Date().toISOString(),
-      details: error.stack
+      timestamp: new Date().toISOString()
     }), {
       headers: {
         ...corsHeaders,

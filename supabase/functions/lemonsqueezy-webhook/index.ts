@@ -6,6 +6,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature',
 }
 
+async function isValidSignature(body: string, signature: string, secret: string): Promise<boolean> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
+  const expected = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+  if (expected.length !== signature.length) return false
+  // Constant-time comparison
+  let diff = 0
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i)
+  return diff === 0
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -26,10 +43,16 @@ serve(async (req) => {
     }
 
     const body = await req.text()
-    
-    // In production, you should verify the signature here
-    // For now, we'll skip signature verification for simplicity
-    
+
+    // Verify the HMAC-SHA256 signature Lemon Squeezy sends, so nobody can fake a
+    // "subscription_created" event and give themselves Premium.
+    if (!(await isValidSignature(body, signature, webhookSecret))) {
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      })
+    }
+
     const payload = JSON.parse(body)
     const { meta, data } = payload
 
