@@ -22,7 +22,7 @@ interface ProcessedFile {
 
 interface ProcessedFilesListProps {
   files: ProcessedFile[];
-  onDownload: (fileId: string, format: 'excel' | 'csv' | 'json') => Promise<void>;
+  onDownload: (fileIds: string[], format: 'excel' | 'csv' | 'json') => Promise<void>;
   userTier: 'freemium' | 'premium';
 }
 

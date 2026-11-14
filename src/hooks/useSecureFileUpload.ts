@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useAuth } from "./useAuth";
 
 export const useSecureFileUpload = () => {
@@ -11,7 +11,7 @@ export const useSecureFileUpload = () => {
   const [mergedData, setMergedData] = useState<any>(null);
 
   const { toast } = useToast();
-  const { user, session } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const selectedFile = selectedFiles[0] ?? null;
 
@@ -25,81 +25,37 @@ export const useSecureFileUpload = () => {
   };
 
   const handleProcessFile = async (files: File[]) => {
-    if (!user || !session) {
+    if (!user) {
       toast({ title: "Please sign in", description: "Sign in to process files.", variant: "destructive" });
       return;
     }
-
     if (!files || files.length === 0) {
       toast({ title: "No files selected", description: "Please select files to process.", variant: "destructive" });
       return;
     }
 
     setIsProcessing(true);
-    setUploadProgress(5);
+    setUploadProgress(20);
+    // Reading a receipt takes a few seconds; creep the bar so it doesn't look stuck.
+    const timer = setInterval(() => setUploadProgress((p) => (p < 90 ? p + 5 : p)), 800);
 
     try {
-      // Step 1: upload each file to the user's own folder and create its record (0-40%).
-      const uploaded: { id: string; fileName: string }[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-
-        const { error: uploadError } = await supabase.storage.from("receipts").upload(path, file);
-        if (uploadError) {
-          toast({ title: "Upload failed", description: `${file.name}: ${uploadError.message}`, variant: "destructive" });
-          continue;
-        }
-
-        const { data: dbRecord, error: dbError } = await supabase
-          .from("processed_files")
-          .insert({
-            user_id: user.id,
-            file_name: path,
-            original_file_name: file.name,
-            file_size: file.size,
-            status: "processing",
-          })
-          .select()
-          .single();
-
-        if (dbError) {
-          await supabase.storage.from("receipts").remove([path]);
-          toast({ title: "Upload failed", description: `${file.name}: ${dbError.message}`, variant: "destructive" });
-          continue;
-        }
-
-        uploaded.push({ id: dbRecord.id, fileName: path });
-        setUploadProgress(5 + Math.round(((i + 1) / files.length) * 35));
-      }
-
-      if (uploaded.length === 0) {
-        throw new Error("No files could be uploaded.");
-      }
-
-      // Step 2: process via the edge function (40-100%).
-      setUploadProgress(50);
-      const { data, error } = await supabase.functions.invoke("process-receipt", {
-        body: {
-          fileIds: uploaded.map((f) => f.id),
-          fileNames: uploaded.map((f) => f.fileName),
-        },
-      });
-
-      if (error) throw error;
-      if (!data) throw new Error("No response from processing service");
+      const form = new FormData();
+      files.forEach((f) => form.append("files", f, f.name));
+      const data = await api.upload("/receipts", form);
 
       setProcessedData(data.receipts);
       setMergedData(data.mergedData);
       setUploadProgress(100);
 
+      for (const f of data.failed ?? []) {
+        toast({ title: `Could not read ${f.fileName}`, description: f.error, variant: "destructive" });
+      }
       toast({
         title: "Processing complete!",
         description: `Successfully processed ${data.receipts?.length || 0} file(s).`,
       });
-
+      refreshUser();
       setTimeout(() => setUploadProgress(0), 2000);
     } catch (error: any) {
       toast({
@@ -109,6 +65,7 @@ export const useSecureFileUpload = () => {
       });
       setUploadProgress(0);
     } finally {
+      clearInterval(timer);
       setIsProcessing(false);
     }
   };

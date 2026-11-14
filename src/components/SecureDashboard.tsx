@@ -12,7 +12,7 @@ import DashboardAuth from "./dashboard/DashboardAuth";
 import PremiumGate from "./premium/PremiumGate";
 import { useSecureFileUpload } from "@/hooks/useSecureFileUpload";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,7 @@ import { Link } from "react-router-dom";
 const SecureDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, signOut, session, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const [processedFiles, setProcessedFiles] = useState([]);
   const [userTier, setUserTier] = useState<'freemium' | 'premium'>('freemium');
   const [fileCount, setFileCount] = useState(0);
@@ -54,7 +54,6 @@ const SecureDashboard = () => {
   useEffect(() => {
     console.log("SecureDashboard mounted");
     console.log("Current URL:", window.location.href);
-    console.log("Session:", session);
     console.log("Loading:", loading);
     console.log("User:", userTier);
     
@@ -73,147 +72,24 @@ const SecureDashboard = () => {
   // }, [session, loading, navigate]);
 
   
+  // Tier and usage come from the signed-in user (GET /auth/me); the server enforces both.
   const fetchUserProfile = async () => {
     if (!user) return;
-
-    try {
-      console.log('Fetching user profile for:', user.id);
-      
-      // First check if profile exists
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_tier')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        // If profile doesn't exist, create it
-        if (error.code === 'PGRST116') {
-          console.log('Profile not found, creating new profile');
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              name: user.user_metadata?.name || user.user_metadata?.full_name,
-              email: user.email,
-              picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
-              user_tier: 'freemium'
-            });
-          
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-          } else {
-            console.log('Profile created successfully with freemium tier');
-            setUserTier('freemium');
-            
-            // Check for existing subscription after profile creation
-            await checkAndUpdateSubscription();
-          }
-        }
-        return;
-      }
-      
-      const tier = data?.user_tier;
-      console.log("User tier fetched:", tier);
-      if (tier === 'premium' || tier === 'freemium') {
-        setUserTier(tier);
-      } else {
-        console.log('Invalid tier found, defaulting to freemium');
-        setUserTier('freemium');
-      }
-      
-      // Always check subscription status to ensure tier is up to date
-      await checkAndUpdateSubscription();
-    } catch (error: any) {
-      console.error('Error fetching user profile:', error);
-      setUserTier('freemium');
-    }
+    setUserTier(user.tier === 'premium' ? 'premium' : 'freemium');
   };
 
-  const checkAndUpdateSubscription = async () => {
-    if (!user) return;
-    
-    try {
-      console.log('Checking subscription status for user:', user.id);
-      
-      const { data: subscription, error } = await supabase
-        .from('subscribers')
-        .select('subscribed, subscription_tier, subscription_end')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching subscription:', error);
-        return;
-      }
-      
-      if (subscription) {
-        console.log('Subscription found:', subscription);
-        
-        const isActive = subscription.subscribed && 
-          (!subscription.subscription_end || new Date(subscription.subscription_end) > new Date());
-        
-        const newTier = isActive ? 'premium' : 'freemium';
-        console.log('Calculated tier based on subscription:', newTier);
-        
-        if (newTier !== userTier) {
-          console.log('Updating user tier from', userTier, 'to', newTier);
-          
-          // Update profile with correct tier
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ 
-              user_tier: newTier,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
-          
-          if (updateError) {
-            console.error('Error updating user tier:', updateError);
-          } else {
-            setUserTier(newTier);
-            console.log('User tier updated successfully to:', newTier);
-          }
-        }
-      } else {
-        console.log('No subscription found, user remains freemium');
-      }
-    } catch (error: any) {
-      console.error('Error checking subscription:', error);
-    }
-  };
-  
   const fetchUserFileCount = async () => {
     if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .rpc('get_user_file_count', { user_uuid: user.id });
-
-      if (error) throw error;
-      setFileCount(data || 0);
-    } catch (error: any) {
-      console.error('Error fetching file count:', error);
-    }
+    setFileCount(user.files_used || 0);
   };
 
   const fetchProcessedFiles = async () => {
-    console.log("User:",user);
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('processed_files')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { receipts } = await api.get('/receipts');
 
-      console.log("DATA:",data);
-      
-      if (error) throw error;
-
-      const formattedFiles = data?.map(file => ({
+      const formattedFiles = receipts.map((file: any) => ({
         id: file.id,
         fileName: file.file_name,
         originalFileName: file.original_file_name,
@@ -226,7 +102,7 @@ const SecureDashboard = () => {
         processedData: file.processed_data,
         category: file.category,
         confidenceScore: file.confidence_score
-      })) || [];
+      }));
 
       setProcessedFiles(formattedFiles);
     } catch (error: any) {
@@ -239,12 +115,9 @@ const SecureDashboard = () => {
   };
 
   
-  const exportData = async (
-  format: 'excel' | 'csv' | 'json',
-  mergedData: any
-) => {
-  try {
-    if (!mergedData || !mergedData.combinedItems?.length) {
+  // Exports are generated by the backend (CSV for everyone, Excel/JSON on Premium).
+  const downloadExport = async (format: 'excel' | 'csv' | 'json', ids: string[]) => {
+    if (!ids.length) {
       toast({
         title: "No data to export",
         description: "Please process some files first.",
@@ -252,64 +125,22 @@ const SecureDashboard = () => {
       });
       return;
     }
-
-    // Example: Export JSON
-    if (format === 'json') {
-      const blob = new Blob([JSON.stringify(mergedData.combinedItems, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `receipts_${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+    const apiFormat = format === 'excel' ? 'xlsx' : format;
+    try {
+      await api.download(
+        `/receipts/export?format=${apiFormat}&ids=${encodeURIComponent(ids.join(','))}`,
+        `receipts.${apiFormat}`
+      );
+      toast({ title: "Export successful", description: `Data exported as ${format.toUpperCase()}` });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message || 'Unknown error', variant: "destructive" });
     }
+  };
 
-    // Example: Export CSV
-    if (format === 'csv') {
-      const items = mergedData.combinedItems;
-      const headers = Object.keys(items[0]);
-      const csv = [
-        headers.join(','),
-        ...items.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(',')),
-      ].join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `receipts_${Date.now()}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    // TODO: Add Excel export (premium)
-    if (format === 'excel') {
-      toast({
-        title: "Premium Feature",
-        description: "Excel export not implemented yet.",
-        variant: "destructive",
-      });
-    }
-
-    toast({
-      title: "Export successful",
-      description: `Data exported as ${format}`,
-    });
-  } catch (err: any) {
-    console.error('Export failed:', err);
-    toast({
-      title: "Export failed",
-      description: err.message || 'Unknown error',
-      variant: "destructive",
-    });
-  }
-};
+  const exportData = async (format: 'excel' | 'csv' | 'json', mergedData: any) => {
+    const ids = (mergedData?.receipts ?? []).map((r: any) => r.fileId).filter(Boolean);
+    await downloadExport(format, ids);
+  };
 const handleExportRequest = (
   format: 'excel' | 'csv' | 'json',
   displayData: any
@@ -333,18 +164,10 @@ const handleExportRequest = (
   };
 
   const handleFilesDownload = async (
-  fileIds: string[],
-  format: 'excel' | 'csv' | 'json'
-) => {
-  try {
-
-    // 🔒 Normalize IDs (CRITICAL FIX)
-    const normalizedFileIds = Array.isArray(fileIds)
-      ? fileIds
-      : [fileIds];
-
-    console.log('📥 Download request for IDs:', normalizedFileIds);
-    // Premium check
+    fileIds: string[],
+    format: 'excel' | 'csv' | 'json'
+  ) => {
+    const ids = Array.isArray(fileIds) ? fileIds : [fileIds];
     if ((format === 'excel' || format === 'json') && userTier === 'freemium') {
       toast({
         title: "Premium Feature",
@@ -354,78 +177,8 @@ const handleExportRequest = (
       navigate('/pricing');
       return;
     }
-
-    if (!fileIds.length) {
-      toast({
-        title: "No files selected",
-        description: "Please select at least one file to export.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Fetch all processed files from Supabase
-    const { data: filesData, error } = await supabase
-      .from('processed_files')
-      .select('processed_data, file_name')
-      .in('id', normalizedFileIds);
-
-    if (error) throw error;
-
-    if (!filesData?.length) {
-      toast({
-        title: "No data available",
-        description: "Selected files have not been processed yet or have no data.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // 🔗 Merge data
-    const mergedData = filesData.reduce(
-      (acc, file) => {
-        const receipt = file.processed_data;
-        if (!receipt) return acc;
-
-        acc.summary.totalFiles += 1;
-        acc.summary.totalAmount += Number(receipt.total || 0);
-        acc.summary.totalItems += receipt.items?.length || 0;
-
-        const items = receipt.items?.map((item: any) => ({
-          receiptNumber: acc.summary.totalFiles,
-          merchant: receipt.merchant,
-          date: receipt.date,
-          description: item.description,
-          amount: item.amount,
-          category: item.category || '',
-          fileName: file.file_name || 'receipt',
-        })) || [];
-
-        acc.combinedItems.push(...items);
-        return acc;
-      },
-      {
-        summary: {
-          totalFiles: 0,
-          totalAmount: 0,
-          totalItems: 0,
-          processedAt: new Date().toISOString(),
-        },
-        combinedItems: [] as any[],
-      }
-    );
-
-    // 📤 Export
-    await exportData(format, mergedData);
-
-  } catch (err: any) {
-    toast({
-      title: "Download failed",
-      description: err.message || "Unknown error",
-      variant: "destructive",
-    });
-  }
-};
+    await downloadExport(format, ids);
+  };
   
 /* ===========================
    1️⃣ AUTH-READY INITIAL LOAD

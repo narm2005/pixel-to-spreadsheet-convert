@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLemonSqueezy } from "@/hooks/useLemonSqueezy";
@@ -30,24 +29,10 @@ const LemonSqueezySubscriptionManager = () => {
     }
   }, [user]);
 
+  // Payment provider is being replaced (India: Razorpay planned), so there is no subscription record yet.
   const fetchSubscription = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subscribers')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      setSubscription(data);
-    } catch (error: any) {
-      console.error('Error fetching subscription:', error);
-    } finally {
-      setLoading(false);
-    }
+    setSubscription(null);
+    setLoading(false);
   };
 
   const handleSubscribe = async (plan: 'monthly' | 'yearly') => {
