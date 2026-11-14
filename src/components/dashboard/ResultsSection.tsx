@@ -50,8 +50,10 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
     }
   ];
 
+// Always export the merged data: it holds combinedItems for one receipt or many.
+// (Passing processedData for a single file made every single-receipt export say "No data to export".)
 const handleExportClick = (format: 'excel' | 'csv' | 'json') => {
-  onExport(format, displayData);
+  onExport(format, mergedData);
 };
 
 
