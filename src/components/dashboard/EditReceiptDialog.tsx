@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAppConfig } from "@/hooks/useAppConfig";
 
 export interface EditableReceipt {
   id: string;
@@ -34,6 +35,7 @@ const num = (v: string) => {
 
 // Lets the user fix what the scan got wrong before they download or send it to their CA.
 const EditReceiptDialog = ({ receipt, onClose, onSaved }: Props) => {
+  const sym = useAppConfig().config.currency_symbol.trim();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -119,10 +121,10 @@ const EditReceiptDialog = ({ receipt, onClose, onSaved }: Props) => {
           {field("date", "Bill date", { placeholder: "14/11/2026" })}
           {field("invoiceNumber", "Invoice no.")}
           <div className="col-span-2">{field("gstin", "Seller GSTIN", { placeholder: "33ABCDE1234F1Z5", maxLength: 15 })}</div>
-          {field("cgst", "CGST ₹", { inputMode: "decimal" })}
-          {field("sgst", "SGST ₹", { inputMode: "decimal" })}
-          {field("igst", "IGST ₹", { inputMode: "decimal" })}
-          {field("total", "Bill total ₹", { inputMode: "decimal" })}
+          {field("cgst", `CGST (${sym})`, { inputMode: "decimal" })}
+          {field("sgst", `SGST (${sym})`, { inputMode: "decimal" })}
+          {field("igst", `IGST (${sym})`, { inputMode: "decimal" })}
+          {field("total", `Bill total (${sym})`, { inputMode: "decimal" })}
           <div className="col-span-2">{field("category", "Category", { placeholder: "groceries" })}</div>
         </div>
 
