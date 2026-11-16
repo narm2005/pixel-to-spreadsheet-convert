@@ -6,6 +6,7 @@ import ProcessSteps from "./dashboard/ProcessSteps";
 import FileUploadSection from "./dashboard/FileUploadSection";
 import ResultsSection from "./dashboard/ResultsSection";
 import ProcessedFilesList from "./dashboard/ProcessedFilesList";
+import CaContactSettings from "./dashboard/CaContactSettings";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import PremiumQuickAccess from "./dashboard/PremiumQuickAccess";
 import DashboardAuth from "./dashboard/DashboardAuth";
@@ -298,6 +299,7 @@ useEffect(() => {
             files={processedFiles}
             onDownload={handleFilesDownload}
             onChanged={fetchProcessedFiles}
+            onOpenSettings={() => setActiveSection('settings')}
             userTier={userTier}
           />
         );
@@ -386,6 +388,10 @@ useEffect(() => {
                     Give Feedback
                   </Button>
                 </Link>
+              </div>
+
+              <div className="border-t pt-4">
+                <CaContactSettings />
               </div>
 
               <div className="border-t pt-4">

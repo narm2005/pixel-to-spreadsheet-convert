@@ -53,6 +53,12 @@ export const api = {
     })).json(),
   upload: async <T = any>(path: string, form: FormData): Promise<T> =>
     (await request(path, { method: "POST", body: form })).json(),
+  put: async <T = any>(path: string, body: unknown): Promise<T> =>
+    (await request(path, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })).json(),
   patch: async <T = any>(path: string, body: unknown): Promise<T> =>
     (await request(path, {
       method: "PATCH",

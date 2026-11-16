@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import EditReceiptDialog from "./EditReceiptDialog";
+import SendToCaDialog from "./SendToCaDialog";
 
 interface ProcessedFile {
   id: string;
@@ -34,6 +35,7 @@ interface ProcessedFilesListProps {
   files: ProcessedFile[];
   onDownload: (fileIds: string[], format: ExportFormat) => Promise<void>;
   onChanged: () => void;
+  onOpenSettings: () => void;
   userTier: 'freemium' | 'premium';
 }
 
@@ -65,13 +67,14 @@ const monthLabel = (ym: string) => {
 
 const EXT: Record<ExportFormat, string> = { excel: "xlsx", csv: "csv", json: "json" };
 
-const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({ files, onDownload, onChanged, userTier }) => {
+const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({ files, onDownload, onChanged, onOpenSettings, userTier }) => {
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [month, setMonth] = useState("all");
   const [editing, setEditing] = useState<ProcessedFile | null>(null);
   const [deleting, setDeleting] = useState<ProcessedFile | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
 
   const exportFormats: ExportFormat[] = userTier === 'premium' ? ['excel', 'csv', 'json'] : ['csv'];
   const caFormat: ExportFormat = userTier === 'premium' ? 'excel' : 'csv';
@@ -200,7 +203,7 @@ const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({ files, onDownlo
             {month !== "all" ? ` in ${monthLabel(month)}` : ""}, total <strong>{formatMoney(shownTotal)}</strong>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" disabled={!shownIds.length || busy} onClick={() => share(shownIds, caFormat)}>
+            <Button size="sm" disabled={!shownIds.length || busy} onClick={() => setSendOpen(true)}>
               <Send className="mr-1 h-4 w-4" /> Send to my CA
             </Button>
             <Button size="sm" variant="outline" disabled={!shownIds.length || busy} onClick={() => onDownload(shownIds, caFormat)}>
@@ -210,7 +213,7 @@ const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({ files, onDownlo
           <p className="mt-2 text-xs text-blue-800">
             {userTier === 'premium'
               ? "Excel includes a GST summary sheet: one row per bill with GSTIN, taxable value, CGST, SGST and IGST."
-              : "Pick a month above, then share the file on WhatsApp or email."}
+              : "Pick a month above, then send it on WhatsApp or email."}
           </p>
         </div>
 
@@ -273,6 +276,17 @@ const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({ files, onDownlo
       </CardContent>
 
       <EditReceiptDialog receipt={editing} onClose={() => setEditing(null)} onSaved={onChanged} />
+
+      <SendToCaDialog
+        open={sendOpen}
+        onClose={() => setSendOpen(false)}
+        ids={shownIds}
+        label={month !== "all" ? monthLabel(month) : ""}
+        total={shownTotal}
+        fileKind={caFormat === 'excel' ? 'Excel' : 'CSV'}
+        onShareOther={() => share(shownIds, caFormat)}
+        onOpenSettings={onOpenSettings}
+      />
 
       <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
