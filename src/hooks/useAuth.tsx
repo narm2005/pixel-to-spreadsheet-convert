@@ -17,7 +17,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any; needsConfirmation?: boolean }>;
   signInWithGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   refreshUser: () => Promise<void>;
@@ -69,17 +69,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [loadProfile]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Load the profile before returning, so the dashboard sees a signed-in user right away.
+    if (!error) {
+      setSession(data.session);
+      await loadProfile(data.session);
+    }
     return { error };
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: `${window.location.origin}/dashboard` },
     });
-    return { error };
+    if (error) return { error };
+    // With "Confirm email" on, Supabase returns no session until the link in the email is clicked.
+    if (!data.session) return { error: null, needsConfirmation: true };
+    setSession(data.session);
+    await loadProfile(data.session);
+    return { error: null, needsConfirmation: false };
   };
 
   const signInWithGoogle = async () => {

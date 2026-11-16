@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,16 +16,21 @@ const SecureSignIn = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle } = useAuth();
+
+  // Already signed in (or just signed in): go straight to the dashboard.
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = isSignUp 
+      const { error, needsConfirmation } = isSignUp
         ? await signUp(email, password)
-        : await signIn(email, password);
+        : { ...(await signIn(email, password)), needsConfirmation: false };
 
       if (error) {
         toast({
@@ -34,11 +39,15 @@ const SecureSignIn = () => {
           variant: "destructive",
         });
       } else {
-        if (isSignUp) {
+        if (isSignUp && needsConfirmation) {
           toast({
             title: "Check your email",
-            description: "We've sent you a confirmation link.",
+            description: `We've sent a confirmation link to ${email}. Open it on this device to finish signing up.`,
           });
+          setIsSignUp(false);
+        } else if (isSignUp) {
+          toast({ title: "Welcome!", description: "Your account is ready." });
+          navigate("/dashboard");
         } else {
           toast({
             title: "Welcome back!",
