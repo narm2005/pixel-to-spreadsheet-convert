@@ -285,11 +285,9 @@ const Index = () => {
 
           <div className="text-center mt-8">
             <p className="text-sm text-gray-500">
-              For questions about this disclaimer or our terms, please{" "}
-              <Link to="/feedback" className="text-blue-600 hover:text-blue-700 underline">
-                contact our support team
-              </Link>
-              .
+              Read the full <Link to="/terms" className="text-blue-600 hover:text-blue-700 underline">Terms of Service</Link> and{" "}
+              <Link to="/privacy" className="text-blue-600 hover:text-blue-700 underline">Privacy Policy</Link>, or{" "}
+              <Link to="/contact" className="text-blue-600 hover:text-blue-700 underline">contact us</Link>.
             </p>
           </div>
         </div>
@@ -300,7 +298,7 @@ const Index = () => {
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Receipts?</h2>
           <p className="text-xl mb-8 opacity-90">
-            Join thousands of businesses already using SlickReceipts to streamline their expense management.
+            Start with 10 receipts free. No card needed.
           </p>
           {!user ? (
             <Link to="/signin">
@@ -328,7 +326,7 @@ const Index = () => {
                 Transform your receipts into actionable data with AI-powered OCR technology.
               </p>
               <p className="text-sm text-gray-500">
-                Making expense management effortless for businesses and individuals worldwide.
+                Made in India for shops and small businesses.
               </p>
             </div>
             <div>
@@ -346,9 +344,10 @@ const Index = () => {
               <h4 className="font-medium mb-4">Company</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-                <li><Link to="/feedback" className="hover:text-white transition-colors">Contact</Link></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
+                <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link to="/refunds" className="hover:text-white transition-colors">Refunds &amp; Cancellation</Link></li>
               </ul>
             </div>
             <div>
@@ -363,17 +362,17 @@ const Index = () => {
           </div>
           <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              &copy; 2024 SlickReceipts.com. All rights reserved.
+              &copy; {new Date().getFullYear()} SlickReceipts.com. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+              <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm">
                 Privacy
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors text-sm">
+              </Link>
+              <Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm">
                 Terms
-              </a>
-              <Link to="/feedback" className="text-gray-400 hover:text-white transition-colors text-sm">
-                Support
+              </Link>
+              <Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm">
+                Contact
               </Link>
             </div>
           </div>

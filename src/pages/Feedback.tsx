@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
+import SiteFooter from "@/components/SiteFooter";
 import { 
   Star, 
   Send, 
@@ -357,6 +358,7 @@ const Feedback = () => {
           </Card>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 };

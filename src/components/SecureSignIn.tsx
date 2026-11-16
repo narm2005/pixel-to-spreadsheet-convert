@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "./Navbar";
+import SiteFooter from "@/components/SiteFooter";
 
 const SecureSignIn = () => {
   const [email, setEmail] = useState("");
@@ -189,9 +190,15 @@ const SecureSignIn = () => {
                 }
               </button>
             </div>
+            <p className="mt-4 text-center text-xs text-gray-500">
+              By continuing, you agree to our{" "}
+              <Link to="/terms" className="underline">Terms of Service</Link> and{" "}
+              <Link to="/privacy" className="underline">Privacy Policy</Link>.
+            </p>
           </CardContent>
         </Card>
       </div>
+      <SiteFooter />
     </div>
   );
 };

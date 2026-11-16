@@ -13,6 +13,10 @@ import SecureDashboard from "./components/SecureDashboard";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
 import Demo from "./pages/Demo";
+import Privacy from "./pages/legal/Privacy";
+import Terms from "./pages/legal/Terms";
+import Refunds from "./pages/legal/Refunds";
+import Contact from "./pages/legal/Contact";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +36,10 @@ const App = () => (
             <Route path="/signin" element={<SecureSignIn />} />
             <Route path="/dashboard" element={<SecureDashboard />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/refunds" element={<Refunds />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

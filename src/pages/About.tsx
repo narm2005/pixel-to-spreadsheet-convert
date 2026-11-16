@@ -12,6 +12,7 @@ import {
   Globe
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/hooks/useAuth";
 
 const About = () => {
@@ -236,6 +237,7 @@ const About = () => {
           </div>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 };
