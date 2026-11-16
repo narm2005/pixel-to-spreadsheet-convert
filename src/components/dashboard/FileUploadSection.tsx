@@ -78,8 +78,8 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
         </CardTitle>
         <CardDescription>
           {userTier === "premium"
-            ? "Upload images or PDFs, up to 20 at a time (1,000 a month)."
-            : `Upload images or PDFs. ${remainingFiles} files remaining.`}
+            ? "Photos or PDFs of bills and receipts, up to 20 at a time (1,000 a month)."
+            : `Photos or PDFs of bills and receipts. ${remainingFiles} files remaining.`}
         </CardDescription>
       </CardHeader>
 
