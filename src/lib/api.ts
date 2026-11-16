@@ -1,23 +1,12 @@
-// Small client for the SlickReceipts FastAPI backend (replaces the Supabase client).
+// Small client for the SlickReceipts FastAPI backend. Sign-in stays with Supabase; every request
+// carries the Supabase access token, which the backend verifies.
+import { supabase } from "@/integrations/supabase/client";
+
 export const API_URL = (import.meta.env.VITE_API_URL || "https://receipt2xcl.onrender.com").replace(/\/$/, "");
 
-const TOKEN_KEY = "sr_session";
-
-export const getToken = (): string | null => {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-};
-
-export const setToken = (token: string | null) => {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* private mode: session lasts for this tab only */
-  }
+const getToken = async (): Promise<string | null> => {
+  const { data } = await supabase.auth.getSession(); // refreshes the token when it is about to expire
+  return data.session?.access_token ?? null;
 };
 
 export class ApiError extends Error {
@@ -28,11 +17,19 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
+async function send(path: string, init: RequestInit, token: string | null): Promise<Response> {
   const headers = new Headers(init.headers);
-  const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  return fetch(`${API_URL}${path}`, { ...init, headers });
+}
+
+async function request(path: string, init: RequestInit = {}): Promise<Response> {
+  let res = await send(path, init, await getToken());
+  if (res.status === 401) {
+    // The token may have just expired: refresh once and retry.
+    const { data } = await supabase.auth.refreshSession();
+    if (data.session) res = await send(path, init, data.session.access_token);
+  }
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
@@ -40,10 +37,6 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
       if (typeof body.detail === "string") message = body.detail;
     } catch {
       /* not JSON */
-    }
-    if (res.status === 401) {
-      setToken(null);
-      window.dispatchEvent(new Event("sr-signed-out"));
     }
     throw new ApiError(res.status, message);
   }

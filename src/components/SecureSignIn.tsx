@@ -1,32 +1,85 @@
-import { useEffect, useState } from "react";
-import { GoogleLogin } from "@react-oauth/google";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "./Navbar";
 
 const SecureSignIn = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signInWithGoogleCredential } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const { signIn, signUp, signInWithGoogle } = useAuth();
 
-  useEffect(() => {
-    if (user) navigate("/dashboard");
-  }, [user, navigate]);
-
-  const onGoogleSuccess = async (credential?: string) => {
-    if (!credential) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
-    const { error } = await signInWithGoogleCredential(credential);
-    setIsLoading(false);
-    if (error) {
-      toast({ title: "Google sign-in failed", description: error.message, variant: "destructive" });
-      return;
+
+    try {
+      const { error } = isSignUp 
+        ? await signUp(email, password)
+        : await signIn(email, password);
+
+      if (error) {
+        toast({
+          title: isSignUp ? "Sign up failed" : "Sign in failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        if (isSignUp) {
+          toast({
+            title: "Check your email",
+            description: "We've sent you a confirmation link.",
+          });
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in.",
+          });
+          navigate("/dashboard");
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Authentication error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    toast({ title: "Welcome!", description: "You are now signed in." });
-    navigate("/dashboard");
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast({
+          title: "Google Sign-In Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+      // Note: For OAuth, the redirect happens automatically
+      // The user will be redirected to Google and then back to our app
+    } catch (error: any) {
+      toast({
+        title: "Google Sign-In Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,28 +88,98 @@ const SecureSignIn = () => {
       <div className="flex items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-blue-600">Welcome</CardTitle>
-            <CardDescription>Sign in with Google to scan your receipts</CardDescription>
+            <CardTitle className="text-2xl font-bold text-blue-600">
+              {isSignUp ? "Create Account" : "Welcome Back"}
+            </CardTitle>
+            <CardDescription>
+              {isSignUp ? "Sign up to start processing your receipts" : "Sign in to access your dashboard"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-center">
-              {isLoading ? (
-                <p className="text-sm text-gray-600 py-2">Signing in...</p>
-              ) : (
-                <GoogleLogin
-                  onSuccess={(res) => onGoogleSuccess(res.credential)}
-                  onError={() =>
-                    toast({ title: "Google sign-in failed", description: "Please try again.", variant: "destructive" })
-                  }
-                  text="continue_with"
-                  shape="pill"
-                  width="300"
-                />
-              )}
+            <div className="mb-4 flex justify-center">
+              <Button
+                onClick={handleGoogleSignIn}
+                variant="outline"
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? "Loading..." : "Continue with Google"}
+              </Button>
             </div>
-            <p className="mt-6 text-center text-xs text-gray-500">
-              We only use your Google name, email and photo to create your account.
-            </p>
+
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isLoading}
+              >
+                {isLoading ? (isSignUp ? "Creating Account..." : "Signing In...") : (isSignUp ? "Create Account" : "Sign In")}
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                {isSignUp 
+                  ? "Already have an account? Sign in" 
+                  : "Don't have an account? Sign up"
+                }
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>
