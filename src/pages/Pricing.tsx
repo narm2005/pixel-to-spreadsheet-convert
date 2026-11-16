@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Check, Star, Crown, BarChart3, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/hooks/useAuth";
 
 // Prices in rupees. Online payment isn't connected yet, so "Upgrade" opens an email to support.
@@ -43,7 +44,7 @@ const highlights = [
 const faqs = [
   { q: "Is there a free trial?", a: "Yes. Every account gets 10 receipts free, no card needed." },
   { q: "How do I pay?", a: `Online payment is coming soon. For now, tap Upgrade and email us; we'll send UPI or bank details and switch your account to Premium.` },
-  { q: "Can I cancel?", a: "Yes. Premium simply stops at the end of the period you paid for; your receipts stay in your account." },
+  { q: "Can I cancel?", a: "Yes. Premium simply stops at the end of the period you paid for; your receipts stay in your account. New subscribers can get a full refund within 7 days." },
   { q: "Is my data private?", a: "Only you can see your receipts. Photos are read and then discarded; only the extracted data is saved." },
 ];
 
@@ -146,7 +147,10 @@ const Pricing = () => {
               <a href={upgradeMailto(user?.email, isYearly)}>
                 <Button className="w-full">Upgrade to Premium</Button>
               </a>
-              <p className="mt-2 text-center text-xs text-muted-foreground">Opens an email to us. We'll reply with UPI / bank details.</p>
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                Opens an email to us. We'll reply with UPI / bank details. See our{" "}
+                <Link to="/refunds" className="underline">refund policy</Link>.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -177,6 +181,7 @@ const Pricing = () => {
           </div>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 };

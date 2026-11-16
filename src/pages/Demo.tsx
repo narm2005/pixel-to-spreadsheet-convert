@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Download, ScanLine, CheckCircle2, ArrowRight, RotateCcw } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { formatMoney } from "@/lib/utils";
 
@@ -183,6 +184,7 @@ const Demo = () => {
           </Link>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 };
