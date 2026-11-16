@@ -52,8 +52,10 @@ const Navbar = ({ isAuthenticated: isAuthenticatedProp = false, user: userProp }
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="text-2xl font-bold text-blue-600">📄</div>
-              <span className="text-xl font-bold text-gray-900">SlickReceipts</span>
+              <img src="/logo-mark.svg" alt="" width={36} height={36} className="h-9 w-9" />
+              <span className="text-xl font-extrabold tracking-tight text-slate-900">
+                Slick<span className="font-semibold text-blue-600">Receipts</span>
+              </span>
             </Link>
           </div>
 

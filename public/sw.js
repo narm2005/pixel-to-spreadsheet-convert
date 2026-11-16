@@ -1,6 +1,6 @@
 // Minimal service worker: makes the app installable and lets it open without a connection.
 // Only this site's own files are cached; calls to the backend and Supabase always go to the network.
-const CACHE = "slickreceipts-v1";
+const CACHE = "slickreceipts-v2";
 const SHELL = ["/", "/site.webmanifest", "/android-chrome-192x192.png"];
 
 self.addEventListener("install", (event) => {
