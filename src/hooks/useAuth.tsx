@@ -10,6 +10,7 @@ export interface AppUser {
   user_metadata: { name?: string | null; picture?: string | null };
   tier: "freemium" | "premium";
   files_used: number;
+  is_admin?: boolean;
   // Fair-use counters (India time); the backend enforces them.
   usage?: { day_used: number; day_limit: number; month_used: number; month_limit: number };
 }

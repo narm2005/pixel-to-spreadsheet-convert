@@ -8,16 +8,15 @@ import { Check, Star, Crown, BarChart3, FileSpreadsheet, Layers, Smartphone } fr
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppConfig } from "@/hooks/useAppConfig";
+import { formatPrice } from "@/lib/utils";
 
-// Prices in rupees. Online payment isn't connected yet, so "Upgrade" opens an email to support.
-const PREMIUM_MONTHLY = 199;
-const PREMIUM_YEARLY = 1999; // about 2 months free
+// Prices and currency come from the admin settings (Admin page). Online payment isn't connected yet,
+// so "Upgrade" opens an email to support.
 const SUPPORT_EMAIL = "support@slickreceipts.com";
 
-const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
-
-const upgradeMailto = (email: string | null | undefined, yearly: boolean) => {
-  const plan = yearly ? `Yearly (${rupees(PREMIUM_YEARLY)}/year)` : `Monthly (${rupees(PREMIUM_MONTHLY)}/month)`;
+const upgradeMailto = (email: string | null | undefined, yearly: boolean, monthly: number, yearlyPrice: number) => {
+  const plan = yearly ? `Yearly (${formatPrice(yearlyPrice)}/year)` : `Monthly (${formatPrice(monthly)}/month)`;
   const subject = encodeURIComponent("Upgrade to SlickReceipts Premium");
   const body = encodeURIComponent(
     `Hi,\n\nI'd like to upgrade to Premium.\n\nPlan: ${plan}\nAccount email: ${email || ""}\n\nThanks`
@@ -52,6 +51,11 @@ const Pricing = () => {
   const [isYearly, setIsYearly] = useState(false);
   const { user } = useAuth();
   const isPremium = user?.tier === "premium";
+  const { config } = useAppConfig();
+  const PREMIUM_MONTHLY = config.premium_monthly;
+  const PREMIUM_YEARLY = config.premium_yearly;
+  // Months free when paying yearly, e.g. 199 x 12 = 2,388 vs 1,999: about 2 months.
+  const monthsFree = PREMIUM_MONTHLY > 0 ? Math.floor(12 - PREMIUM_YEARLY / PREMIUM_MONTHLY) : 0;
 
   const navbar = (
     <Navbar
@@ -79,7 +83,7 @@ const Pricing = () => {
     );
   }
 
-  const premiumPrice = isYearly ? Math.round(PREMIUM_YEARLY / 12) : PREMIUM_MONTHLY;
+  const premiumPrice = isYearly ? Math.round((PREMIUM_YEARLY / 12) * 100) / 100 : PREMIUM_MONTHLY;
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,7 +96,7 @@ const Pricing = () => {
             <span className={`text-sm font-medium ${!isYearly ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
             <Switch checked={isYearly} onCheckedChange={setIsYearly} aria-label="Yearly billing" />
             <span className={`text-sm font-medium ${isYearly ? "text-foreground" : "text-muted-foreground"}`}>Yearly</span>
-            <Badge variant="secondary">2 months free</Badge>
+            {monthsFree > 0 && <Badge variant="secondary">{monthsFree} month{monthsFree > 1 ? "s" : ""} free</Badge>}
           </div>
         </div>
 
@@ -101,7 +105,7 @@ const Pricing = () => {
             <CardHeader className="pb-4 text-center">
               <CardTitle className="text-2xl font-bold">Free</CardTitle>
               <CardDescription>Try it with your own bills</CardDescription>
-              <div className="mt-4 text-4xl font-bold">₹0</div>
+              <div className="mt-4 text-4xl font-bold">{formatPrice(0)}</div>
             </CardHeader>
             <CardContent>
               <ul className="mb-8 space-y-3">
@@ -130,10 +134,10 @@ const Pricing = () => {
               </CardTitle>
               <CardDescription>For shops and businesses with regular bills</CardDescription>
               <div className="mt-4 flex items-baseline justify-center gap-1">
-                <span className="text-4xl font-bold">{rupees(premiumPrice)}</span>
+                <span className="text-4xl font-bold">{formatPrice(premiumPrice)}</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
-              {isYearly && <p className="mt-1 text-sm text-muted-foreground">Billed {rupees(PREMIUM_YEARLY)} per year</p>}
+              {isYearly && <p className="mt-1 text-sm text-muted-foreground">Billed {formatPrice(PREMIUM_YEARLY)} per year</p>}
             </CardHeader>
             <CardContent>
               <ul className="mb-8 space-y-3">
@@ -144,7 +148,7 @@ const Pricing = () => {
                   </li>
                 ))}
               </ul>
-              <a href={upgradeMailto(user?.email, isYearly)}>
+              <a href={upgradeMailto(user?.email, isYearly, PREMIUM_MONTHLY, PREMIUM_YEARLY)}>
                 <Button className="w-full">Upgrade to Premium</Button>
               </a>
               <p className="mt-2 text-center text-xs text-muted-foreground">

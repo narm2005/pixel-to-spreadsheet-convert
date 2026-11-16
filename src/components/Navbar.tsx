@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X, User, LogOut, BarChart3, Crown, Settings, MessageSquare } from "lucide-react";
+import { Menu, X, User, LogOut, BarChart3, Crown, Settings, MessageSquare, ShieldCheck } from "lucide-react";
 
 interface NavbarProps {
   isAuthenticated?: boolean;
@@ -150,6 +150,14 @@ const Navbar = ({ isAuthenticated: isAuthenticatedProp = false, user: userProp }
                       Give Feedback
                     </Link>
                   </DropdownMenuItem>
+                  {account?.is_admin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2">
                     <LogOut className="h-4 w-4" />
@@ -232,6 +240,15 @@ const Navbar = ({ isAuthenticated: isAuthenticatedProp = false, user: userProp }
                   >
                     Analytics
                   </Link>
+                  {account?.is_admin && (
+                    <Link
+                      to="/admin"
+                      className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Admin
+                    </Link>
+                  )}
                   <div className="border-t pt-4 mt-4">
                     <div className="flex items-center px-3 py-2">
                       <Avatar className="h-8 w-8 mr-2">
