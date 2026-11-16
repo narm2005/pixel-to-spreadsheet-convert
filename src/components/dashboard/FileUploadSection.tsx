@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Crown } from "lucide-react";
+import { Upload, Crown, Camera, ImagePlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface FileUploadSectionProps {
@@ -52,8 +52,6 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
 
     if (!filesToProcess.length) return;
 
-    console.log("🚀 Processing files:", filesToProcess);
-
     try {
       await onProcessFile(filesToProcess);
     } catch (err) {
@@ -83,7 +81,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
 
       <CardContent>
         <div
-          className="border-2 border-dashed rounded-lg p-8 text-center hover:border-blue-400 cursor-pointer"
+          className="border-2 border-dashed rounded-lg p-4 md:p-8 text-center hover:border-blue-400"
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
@@ -95,20 +93,52 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
             onChange={onFileSelect}
             className="hidden"
           />
+          {/* On phones this opens the camera directly */}
+          <input
+            id="camera-capture"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={onFileSelect}
+            className="hidden"
+          />
 
-          <label htmlFor="file-upload">
-            <Button asChild>
-              <span>Select Files</span>
-            </Button>
-          </label>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <label htmlFor="camera-capture" className="md:hidden">
+              <Button asChild size="lg" className="w-full h-14 text-base">
+                <span>
+                  <Camera className="h-5 w-5 mr-2" />
+                  Take photo
+                </span>
+              </Button>
+            </label>
+            <label htmlFor="file-upload">
+              <Button asChild size="lg" variant="outline" className="w-full h-14 text-base md:h-11 md:text-sm">
+                <span>
+                  <ImagePlus className="h-5 w-5 mr-2" />
+                  <span className="md:hidden">Choose from gallery</span>
+                  <span className="hidden md:inline">Select Files</span>
+                </span>
+              </Button>
+            </label>
+          </div>
+          <p className="hidden md:block mt-3 text-xs text-gray-500">or drag and drop files here</p>
         </div>
+
+        {selectedFiles.length > 0 && (
+          <ul className="mt-3 space-y-1 text-sm text-gray-700">
+            {selectedFiles.map((f, i) => (
+              <li key={i} className="truncate">📄 {f.name}</li>
+            ))}
+          </ul>
+        )}
 
         {selectedFiles.length > 0 && (
           <div className="mt-4">
             <Button
               onClick={handleProcessWrapper}
               disabled={isProcessing || selectedForProcessing.size === 0}
-              className="w-full"
+              className="w-full h-12 text-base"
             >
               {isProcessing ? "Processing..." : "Process Files"}
             </Button>

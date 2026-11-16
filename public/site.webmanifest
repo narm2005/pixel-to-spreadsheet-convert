@@ -1,21 +1,20 @@
 {
+  "id": "/",
   "name": "SlickReceipts",
   "short_name": "SlickReceipts",
-  "description": "Transform receipts into actionable data with AI",
-  "icons": [
-    {
-      "src": "/android-chrome-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/android-chrome-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ],
+  "description": "Scan receipts and export them to Excel, CSV or JSON",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
   "theme_color": "#2563eb",
   "background_color": "#ffffff",
-  "display": "standalone",
-  "start_url": "/"
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Scan a receipt", "url": "/dashboard", "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }] }
+  ]
 }

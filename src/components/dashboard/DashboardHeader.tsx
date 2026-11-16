@@ -16,18 +16,19 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userTier, fileCount }
   const remainingFiles = userTier === 'premium' ? 'Unlimited' : Math.max(0, 10 - fileCount);
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between">
+    <div className="mb-4 md:mb-8">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Convert Images & PDFs to Excel, CSV, or JSON
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900 mb-1 md:mb-2">
+            <span className="md:hidden">Scan your receipts</span>
+            <span className="hidden md:inline">Convert Images & PDFs to Excel, CSV, or JSON</span>
           </h1>
-          <p className="text-gray-600">
+          <p className="hidden md:block text-gray-600">
             Securely upload your images or PDF files with table data and convert them to structured data formats.
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          <div className="text-right">
+          <div className="md:text-right">
             <p className="text-sm text-gray-600">Files used</p>
             <p className="text-lg font-semibold">
               {userTier === 'premium' ? 'Unlimited' : `${fileCount}/10`}

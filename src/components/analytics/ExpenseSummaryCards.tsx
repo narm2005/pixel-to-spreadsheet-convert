@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Receipt, TrendingUp, Calendar } from "lucide-react";
+import { IndianRupee, Receipt, TrendingUp, Calendar } from "lucide-react";
+import { formatMoney } from "@/lib/utils";
 
 interface ExpenseData {
   month_year: string;
@@ -25,8 +26,8 @@ const ExpenseSummaryCards: React.FC<ExpenseSummaryCardsProps> = ({ data }) => {
   const summaryData = [
     {
       title: "Total Spent",
-      value: `$${totalSpent.toFixed(2)}`,
-      icon: DollarSign,
+      value: formatMoney(totalSpent),
+      icon: IndianRupee,
       description: "All time spending"
     },
     {
@@ -43,7 +44,7 @@ const ExpenseSummaryCards: React.FC<ExpenseSummaryCardsProps> = ({ data }) => {
     },
     {
       title: "This Month",
-      value: `$${currentMonthSpent.toFixed(2)}`,
+      value: formatMoney(currentMonthSpent),
       icon: Calendar,
       description: "Current month spending"
     }
