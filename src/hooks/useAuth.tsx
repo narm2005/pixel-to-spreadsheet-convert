@@ -103,10 +103,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    // A global sign-out needs Supabase to answer; if it fails (expired session, network),
+    // still forget the session on this device so the user is never left signed in.
     const { error } = await supabase.auth.signOut();
+    if (error) await supabase.auth.signOut({ scope: "local" });
     setUser(null);
     setSession(null);
-    return { error };
+    return { error: null };
   };
 
   return (
