@@ -62,7 +62,7 @@ const ExpenseChart: React.FC<ExpenseChartProps> = ({ data, type }) => {
               <XAxis dataKey="month_year" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="total_amount" />
+              <Bar dataKey="total_amount" fill="#2563eb" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

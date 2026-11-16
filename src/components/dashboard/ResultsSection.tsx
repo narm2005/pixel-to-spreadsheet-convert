@@ -99,10 +99,17 @@ const handleExportClick = (format: 'excel' | 'csv' | 'json') => {
                     <p><strong>Merchant:</strong> {displayData.merchant || 'Unknown'}</p>
                     <p><strong>Total:</strong> {formatMoney(displayData.total)}</p>
                     <p><strong>Items:</strong> {displayData.items?.length || 0}</p>
+                    {displayData.gstin && <p><strong>GSTIN:</strong> {displayData.gstin}</p>}
+                    {displayData.invoiceNumber && <p><strong>Invoice no.:</strong> {displayData.invoiceNumber}</p>}
+                    {(Number(displayData.cgst) + Number(displayData.sgst) + Number(displayData.igst)) > 0 && (
+                      <p><strong>GST:</strong> {formatMoney(Number(displayData.cgst || 0) + Number(displayData.sgst || 0) + Number(displayData.igst || 0))}</p>
+                    )}
                   </div>
                 )}
               </div>
             </div>
+
+            <p className="text-xs text-gray-500">Something read wrong? Open History and tap Edit to fix it before downloading.</p>
 
             {/* Export Options */}
             <div>

@@ -9,9 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 interface DashboardHeaderProps {
   userTier: 'freemium' | 'premium';
   fileCount: number;
+  monthUsed?: number;
+  monthLimit?: number;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userTier, fileCount }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userTier, fileCount, monthUsed = 0, monthLimit = 1000 }) => {
   const navigate = useNavigate();
   const remainingFiles = userTier === 'premium' ? 'Unlimited' : Math.max(0, 10 - fileCount);
 
@@ -29,9 +31,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userTier, fileCount }
         </div>
         <div className="flex items-center space-x-4">
           <div className="md:text-right">
-            <p className="text-sm text-gray-600">Files used</p>
+            <p className="text-sm text-gray-600">{userTier === 'premium' ? 'Files used this month' : 'Files used'}</p>
             <p className="text-lg font-semibold">
-              {userTier === 'premium' ? 'Unlimited' : `${fileCount}/10`}
+              {userTier === 'premium' ? `${monthUsed} / ${monthLimit.toLocaleString('en-IN')}` : `${fileCount}/10`}
             </p>
           </div>
           <Badge variant={userTier === 'premium' ? 'default' : 'secondary'} className="flex items-center gap-1">

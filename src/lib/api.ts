@@ -53,7 +53,20 @@ export const api = {
     })).json(),
   upload: async <T = any>(path: string, form: FormData): Promise<T> =>
     (await request(path, { method: "POST", body: form })).json(),
+  patch: async <T = any>(path: string, body: unknown): Promise<T> =>
+    (await request(path, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })).json(),
   delete: async <T = any>(path: string): Promise<T> => (await request(path, { method: "DELETE" })).json(),
+  // Fetches a generated file without saving it, e.g. to share it from a phone.
+  file: async (path: string, fallbackName: string): Promise<File> => {
+    const res = await request(path);
+    const blob = await res.blob();
+    const match = /filename="?([^"]+)"?/.exec(res.headers.get("Content-Disposition") || "");
+    return new File([blob], match?.[1] || fallbackName, { type: blob.type });
+  },
   // Downloads a file the backend generates (CSV / Excel / JSON) and saves it.
   download: async (path: string, fallbackName: string) => {
     const res = await request(path);

@@ -24,11 +24,11 @@ const upgradeMailto = (email: string | null | undefined, yearly: boolean) => {
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
 };
 
-const freeFeatures = ["10 receipts free", "Photo or PDF upload", "CSV download", "Receipt history"];
+const freeFeatures = ["10 receipts free", "Photo or PDF upload", "GSTIN, invoice no. and GST amounts read for you", "Edit, search and CSV download"];
 const premiumFeatures = [
-  "Unlimited receipts",
-  "Upload many receipts at once and get one merged file",
-  "Excel, CSV and JSON downloads",
+  "Up to 1,000 receipts a month (100 a day)",
+  "Upload up to 20 receipts at once and get one merged file",
+  "Excel, CSV and JSON downloads, with a GST summary sheet for your CA",
   "Spending analytics by category and month",
   "Priority email support",
 ];
