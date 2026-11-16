@@ -12,6 +12,7 @@ import SecureSignIn from "./components/SecureSignIn";
 import SecureDashboard from "./components/SecureDashboard";
 import NotFound from "./pages/NotFound";
 import Analytics from "./pages/Analytics";
+import Demo from "./pages/Demo";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/demo" element={<Demo />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/signin" element={<SecureSignIn />} />
             <Route path="/dashboard" element={<SecureDashboard />} />
