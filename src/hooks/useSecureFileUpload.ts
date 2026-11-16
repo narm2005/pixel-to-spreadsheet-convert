@@ -63,20 +63,31 @@ export const useSecureFileUpload = () => {
       setMergedData(data.mergedData);
       setUploadProgress(100);
 
-      for (const f of data.failed ?? []) {
-        toast({ title: `Could not read ${f.fileName}`, description: f.error, variant: "destructive" });
+      // Only one toast shows at a time, so put skipped files in the same message.
+      const done = data.receipts?.length || 0;
+      const failed: { fileName: string; error: string }[] = data.failed ?? [];
+      if (failed.length) {
+        const notReceipts = failed.filter((f) => /look like a receipt/i.test(f.error)).length;
+        toast({
+          title: `${done} receipt${done === 1 ? "" : "s"} read, ${failed.length} skipped`,
+          description:
+            failed.map((f) => `${f.fileName}: ${f.error}`).join(" ") +
+            (notReceipts ? " Skipped files don't count towards your limit." : ""),
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Processing complete!", description: `Successfully processed ${done} file(s).` });
       }
-      toast({
-        title: "Processing complete!",
-        description: `Successfully processed ${data.receipts?.length || 0} file(s).`,
-      });
       setSelectedFiles([]);
       refreshUser();
       setTimeout(() => setUploadProgress(0), 2000);
     } catch (error: any) {
+      const notReceipt = /look like a receipt/i.test(error?.message || "");
       toast({
-        title: "Processing failed",
-        description: error?.message || "An unexpected error occurred during processing.",
+        title: notReceipt ? "Not a receipt" : "Processing failed",
+        description: notReceipt
+          ? `${error.message} It doesn't count towards your limit.`
+          : error?.message || "An unexpected error occurred during processing.",
         variant: "destructive",
       });
       setUploadProgress(0);
