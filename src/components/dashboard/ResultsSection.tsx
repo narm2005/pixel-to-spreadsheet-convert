@@ -24,7 +24,7 @@ const ResultsSection: React.FC<ResultsSectionProps> = ({
   if (!processedData) return null;
 
   const isMultipleFiles = Array.isArray(processedData) && processedData.length > 1;
-  const displayData = isMultipleFiles ? mergedData : processedData;
+  const displayData = isMultipleFiles ? mergedData : Array.isArray(processedData) ? processedData[0] : processedData;
 
   const exportOptions = [
     {

@@ -44,8 +44,6 @@ const SecureSignIn = () => {
             title: "Welcome back!",
             description: "You have successfully signed in.",
           });
-          console.log("User signed in successfully");
-          console.log("Redirecting to dashboard...");
           navigate("/dashboard");
         }
       }
