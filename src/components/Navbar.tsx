@@ -18,15 +18,27 @@ interface NavbarProps {
     name?: string;
     picture?: string;
   };
-  onSignOut?: () => void;
+  onSignOut?: () => void; // not used any more: the menu signs out by itself
 }
 
-const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
+const Navbar = ({ isAuthenticated: isAuthenticatedProp = false, user: userProp }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   // Premium users don't need pricing or upgrade links.
-  const { user: account } = useAuth();
+  const { user: account, signOut } = useAuth();
+
+  // Every page's menu signs out the same way and lands on the home page.
+  const handleSignOut = async () => {
+    setIsMenuOpen(false);
+    await signOut();
+    window.location.href = "/";
+  };
   const isPremium = account?.tier === "premium";
+  // Some pages don't pass the user; fall back to the signed-in account so the menu (and Sign Out) always shows.
+  const isAuthenticated = isAuthenticatedProp || !!account;
+  const user = userProp ?? (account
+    ? { name: account.user_metadata?.name || account.email || undefined, picture: account.user_metadata?.picture || undefined }
+    : undefined);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -139,11 +151,7 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => {
-                    if (onSignOut) {
-                      onSignOut();
-                    }
-                  }} className="flex items-center gap-2">
+                  <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2">
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
@@ -237,10 +245,7 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start px-3 py-2 text-left text-gray-700 hover:text-blue-600"
-                      onClick={() => {
-                        onSignOut?.();
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleSignOut}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
                       Sign Out
