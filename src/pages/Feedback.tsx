@@ -1,361 +1,218 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { api } from "@/lib/api";
+import { BUSINESS } from "@/lib/business";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
-import { 
-  Star, 
-  Send, 
-  Crown, 
-  Clock, 
-  Download, 
-  BarChart3, 
-  Shield, 
-  Smartphone,
-  Bell,
-  CheckCircle
-} from "lucide-react";
+import { Star, Send, Crown, CheckCircle, Lightbulb, Bug, HelpCircle, Heart, MessageSquare, Mail } from "lucide-react";
+
+const CATEGORIES = [
+  { id: "idea", label: "Idea", icon: Lightbulb },
+  { id: "bug", label: "Problem", icon: Bug },
+  { id: "question", label: "Question", icon: HelpCircle },
+  { id: "praise", label: "Praise", icon: Heart },
+] as const;
+
+const PLACEHOLDER: Record<string, string> = {
+  idea: "What would make SlickReceipts more useful for you or your CA?",
+  bug: "What happened, and what did you expect? Which phone or browser?",
+  question: "What would you like to know?",
+  praise: "What do you like? It helps us know what to keep.",
+};
+
+const LABELS = ["", "Poor", "Okay", "Good", "Great", "Excellent"];
 
 const Feedback = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
+  const [category, setCategory] = useState<string>("idea");
   const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
-  const [feedback, setFeedback] = useState("");
+  const [hovered, setHovered] = useState(0);
+  const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
-  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!feedback.trim()) {
-      toast({
-        title: "Feedback required",
-        description: "Please enter your feedback before submitting.",
-        variant: "destructive",
-      });
+    if (message.trim().length < 3) {
+      toast({ title: "Please write a few words", description: "Tell us what's on your mind.", variant: "destructive" });
       return;
     }
-
-    setIsSubmittingFeedback(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmittingFeedback(false);
-      setFeedbackSubmitted(true);
-      toast({
-        title: "Thank you for your feedback!",
-        description: "We appreciate your input and will use it to improve our service.",
+    setSending(true);
+    try {
+      await api.post("/feedback", {
+        category,
+        rating: rating || null,
+        message: message.trim(),
+        email: user ? "" : email.trim(),
+        page: document.referrer ? new URL(document.referrer).pathname : "",
       });
-      
-      // Reset form
-      setFeedback("");
+      setSent(true);
+      setMessage("");
       setRating(0);
-    }, 1000);
-  };
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email.trim()) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address.",
-        variant: "destructive",
-      });
-      return;
+    } catch (err: any) {
+      toast({ title: "Could not send", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
     }
-
-    setIsSubmittingEmail(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmittingEmail(false);
-      setEmailSubmitted(true);
-      toast({
-        title: "You're on the list!",
-        description: "We'll notify you when Premium features are available.",
-      });
-      
-      // Reset form
-      setEmail("");
-    }, 1000);
   };
-
-  const premiumFeatures = [
-    {
-      icon: <Clock className="h-5 w-5 text-blue-600" />,
-      title: "Extended Retention",
-      description: "Keep your data for 1 year instead of 30 days"
-    },
-    {
-      icon: <Download className="h-5 w-5 text-green-600" />,
-      title: "Watermark-Free Exports",
-      description: "Clean exports without SlickReceipts branding"
-    },
-    {
-      icon: <BarChart3 className="h-5 w-5 text-purple-600" />,
-      title: "Advanced Analytics",
-      description: "Detailed spending insights and trend analysis"
-    },
-    {
-      icon: <Shield className="h-5 w-5 text-orange-600" />,
-      title: "Priority Support",
-      description: "Get help faster with premium support"
-    },
-    {
-      icon: <Smartphone className="h-5 w-5 text-indigo-600" />,
-      title: "Mobile App Access",
-      description: "Process receipts on-the-go with our mobile app"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar
-        isAuthenticated={!!user}
-        user={user ? {
-          name: user.user_metadata?.name || user.email,
-          picture: user.user_metadata?.picture
-        } : undefined}
-        onSignOut={handleSignOut}
-      />
-      
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Help Us Improve
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Your feedback helps us build better features. Share your experience and get early access to premium features.
+      <Navbar />
+
+      <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-12">
+        <div className="mb-8 text-center md:mb-12">
+          <h1 className="mb-3 text-3xl font-bold text-gray-900 md:text-4xl">Help us improve</h1>
+          <p className="mx-auto max-w-2xl text-lg text-gray-600">
+            Tell us what works, what doesn't, and what you'd like next. We read every message.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Feedback Section */}
-          <Card className="h-fit">
+        <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
+          <Card className="h-fit lg:col-span-3">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
-                Share Your Feedback
+                Send feedback
               </CardTitle>
               <CardDescription>
-                Tell us about your experience with SlickReceipts
+                {user ? `We'll reply to ${user.email} if needed.` : "Add your email if you'd like a reply."}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {feedbackSubmitted ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Thank you!
-                  </h3>
-                  <p className="text-gray-600">
-                    Your feedback has been submitted successfully.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setFeedbackSubmitted(false)}
-                  >
-                    Submit Another
+              {sent ? (
+                <div className="py-8 text-center">
+                  <CheckCircle className="mx-auto mb-4 h-14 w-14 text-green-500" />
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900">Thank you!</h3>
+                  <p className="text-gray-600">Your message has reached us.</p>
+                  <Button variant="outline" className="mt-4" onClick={() => setSent(false)}>
+                    Send another
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleFeedbackSubmit} className="space-y-6">
-                  {/* Star Rating */}
+                <form onSubmit={submit} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      How would you rate your experience?
-                    </label>
-                    <div className="flex gap-1">
+                    <p className="mb-2 text-sm font-medium text-gray-700">What is it about?</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Feedback type">
+                      {CATEGORIES.map(({ id, label, icon: Icon }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          role="radio"
+                          aria-checked={category === id}
+                          onClick={() => setCategory(id)}
+                          className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                            category === id ? "border-blue-600 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-gray-700">How is SlickReceipts working for you? (optional)</p>
+                    <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           type="button"
-                          className="p-1 transition-colors"
-                          onMouseEnter={() => setHoveredRating(star)}
-                          onMouseLeave={() => setHoveredRating(0)}
-                          onClick={() => setRating(star)}
+                          aria-label={`${star} star${star > 1 ? "s" : ""}`}
+                          className="p-1"
+                          onMouseEnter={() => setHovered(star)}
+                          onMouseLeave={() => setHovered(0)}
+                          onClick={() => setRating(star === rating ? 0 : star)}
                         >
                           <Star
-                            className={`h-8 w-8 ${
-                              star <= (hoveredRating || rating)
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
-                            } transition-colors`}
+                            className={`h-7 w-7 transition-colors ${
+                              star <= (hovered || rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                            }`}
                           />
                         </button>
                       ))}
+                      {(hovered || rating) > 0 && <span className="ml-2 text-sm text-gray-600">{LABELS[hovered || rating]}</span>}
                     </div>
-                    {rating > 0 && (
-                      <p className="text-sm text-gray-600 mt-2">
-                        {rating === 5 && "Excellent! 🎉"}
-                        {rating === 4 && "Great! 👍"}
-                        {rating === 3 && "Good 👌"}
-                        {rating === 2 && "Okay 😐"}
-                        {rating === 1 && "Needs improvement 😔"}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Feedback Text */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tell us more about your experience
-                    </label>
+                  <div className="space-y-2">
+                    <Label htmlFor="fb-message">Your message</Label>
                     <Textarea
-                      placeholder="What did you like? What could be improved? Any features you'd like to see?"
-                      value={feedback}
-                      onChange={(e) => setFeedback(e.target.value)}
+                      id="fb-message"
+                      placeholder={PLACEHOLDER[category]}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
                       rows={5}
+                      maxLength={4000}
                       className="resize-none"
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={isSubmittingFeedback}
-                  >
-                    {isSubmittingFeedback ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Submit Feedback
-                      </>
-                    )}
+                  {!user && (
+                    <div className="space-y-2">
+                      <Label htmlFor="fb-email">Email (optional)</Label>
+                      <Input id="fb-email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full" disabled={sending}>
+                    <Send className="mr-2 h-4 w-4" />
+                    {sending ? "Sending..." : "Send feedback"}
                   </Button>
                 </form>
               )}
             </CardContent>
           </Card>
 
-          {/* Premium Preview Section */}
-          <Card className="h-fit border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-blue-600" />
-                  Premium – Coming Soon
+          <div className="space-y-6 lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageSquare className="h-5 w-5" />
+                  Other ways to reach us
                 </CardTitle>
-                <Badge className="bg-blue-600 text-white">
-                  Early Access
-                </Badge>
-              </div>
-              <CardDescription>
-                Get notified when premium features launch
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Price Preview */}
-              <div className="text-center py-4 bg-white rounded-lg border">
-                <div className="text-3xl font-bold text-gray-900">$9</div>
-                <div className="text-gray-600">/month</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  Estimated pricing
-                </div>
-              </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-gray-700">
+                <p className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <a className="text-blue-600 underline" href={`mailto:${BUSINESS.supportEmail}`}>{BUSINESS.supportEmail}</a>
+                </p>
+                <p>
+                  We usually reply within 2 working days. For privacy requests or complaints, see our{" "}
+                  <Link className="text-blue-600 underline" to="/contact">contact page</Link>.
+                </p>
+              </CardContent>
+            </Card>
 
-              {/* Features List */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900">
-                  Upcoming Premium Features:
-                </h4>
-                {premiumFeatures.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {feature.icon}
-                    </div>
-                    <div>
-                      <h5 className="font-medium text-gray-900">
-                        {feature.title}
-                      </h5>
-                      <p className="text-sm text-gray-600">
-                        {feature.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Email Signup */}
-              {emailSubmitted ? (
-                <div className="text-center py-6 bg-white rounded-lg border">
-                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    You're on the list!
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    We'll email you when Premium is available.
-                  </p>
-                </div>
-              ) : (
-                <form onSubmit={handleEmailSubmit} className="space-y-3">
-                  <Input
-                    type="email"
-                    placeholder="Enter your email for early access"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-white"
-                  />
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    disabled={isSubmittingEmail}
-                  >
-                    {isSubmittingEmail ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Joining...
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="h-4 w-4 mr-2" />
-                        Notify Me
-                      </>
-                    )}
-                  </Button>
-                </form>
-              )}
-
-              <div className="text-xs text-gray-500 text-center">
-                No spam, just updates on premium features
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Additional Info */}
-        <div className="mt-12 text-center">
-          <Card className="bg-gray-100 border-0">
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Building the Future of Receipt Processing
-              </h3>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                Your feedback directly influences our roadmap. We're committed to building 
-                the most powerful and user-friendly receipt processing platform.
-              </p>
-            </CardContent>
-          </Card>
+            {user?.tier !== "premium" && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Crown className="h-5 w-5 text-blue-600" />
+                    Need more than 10 receipts?
+                  </CardTitle>
+                  <CardDescription>
+                    Premium adds Excel with a GST summary sheet, merged uploads, analytics and up to 1,000 receipts a month.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link to="/pricing">
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700">See Premium plans</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
       <SiteFooter />
