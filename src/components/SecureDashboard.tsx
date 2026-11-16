@@ -219,11 +219,11 @@ useEffect(() => {
 
   // Sidebar menu items
   const menuItems = [
-    { id: 'upload', label: 'Upload Files', icon: Upload, description: 'Upload and process new receipts' },
-    { id: 'history', label: 'File History', icon: History, description: 'View and manage processed files' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Expense insights and reports', premium: true },
-    { id: 'settings', label: 'Settings', icon: Settings, description: 'Account and preferences' },
-    { id: 'help', label: 'Help & Support', icon: HelpCircle, description: 'Get help and documentation' },
+    { id: 'upload', short: 'Upload', label: 'Upload Files', icon: Upload, description: 'Upload and process new receipts' },
+    { id: 'history', short: 'History', label: 'File History', icon: History, description: 'View and manage processed files' },
+    { id: 'analytics', short: 'Analytics', label: 'Analytics', icon: BarChart3, description: 'Expense insights and reports', premium: true },
+    { id: 'settings', short: 'Settings', label: 'Settings', icon: Settings, description: 'Account and preferences' },
+    { id: 'help', short: 'Help', label: 'Help & Support', icon: HelpCircle, description: 'Get help and documentation' },
   ];
 
   const renderContent = () => {
@@ -231,7 +231,9 @@ useEffect(() => {
       case 'upload':
         return (
           <div className="space-y-8">
-            <ProcessSteps />
+            <div className="hidden md:block">
+              <ProcessSteps />
+            </div>
             <FileUploadSection
               selectedFile={selectedFile}
               selectedFiles={selectedFiles}
@@ -419,7 +421,7 @@ useEffect(() => {
         
         <div className="flex">
           {/* Sidebar */}
-          <div className="w-64 bg-white shadow-sm border-r min-h-screen">
+          <div className="hidden md:block w-64 shrink-0 bg-white shadow-sm border-r min-h-screen">
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Dashboard</h2>
               <nav className="space-y-2">
@@ -450,14 +452,43 @@ useEffect(() => {
           </div>
 
           {/* Main Content */}
-          <div className="flex-1">
-            <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className="flex-1 min-w-0">
+            <div className="max-w-6xl mx-auto px-4 py-4 pb-24 md:px-6 md:py-8 md:pb-8">
               <DashboardHeader userTier={userTier} fileCount={fileCount} />
               <PremiumQuickAccess userTier={userTier} />
               {renderContent()}
             </div>
           </div>
         </div>
+
+        {/* Phone navigation: bottom tab bar instead of the sidebar */}
+        <nav
+          className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t shadow-[0_-1px_4px_rgba(0,0,0,0.05)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          aria-label="Dashboard"
+        >
+          <div className="grid grid-cols-5">
+            {menuItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveSection(item.id);
+                  window.scrollTo({ top: 0 });
+                }}
+                aria-current={activeSection === item.id ? "page" : undefined}
+                className={`relative flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[11px] ${
+                  activeSection === item.id ? "text-blue-700" : "text-gray-500"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.short}</span>
+                {item.premium && userTier === 'freemium' && (
+                  <Crown className="absolute top-1.5 right-[calc(50%-18px)] h-3 w-3 text-orange-500" />
+                )}
+              </button>
+            ))}
+          </div>
+        </nav>
       </div>
     </DashboardAuth>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
+import { shrinkImage } from "@/lib/shrinkImage";
 import { useAuth } from "./useAuth";
 
 export const useSecureFileUpload = () => {
@@ -40,8 +41,9 @@ export const useSecureFileUpload = () => {
     const timer = setInterval(() => setUploadProgress((p) => (p < 90 ? p + 5 : p)), 800);
 
     try {
+      const ready = await Promise.all(files.map(shrinkImage));
       const form = new FormData();
-      files.forEach((f) => form.append("files", f, f.name));
+      ready.forEach((f) => form.append("files", f, f.name));
       const data = await api.upload("/receipts", form);
 
       setProcessedData(data.receipts);

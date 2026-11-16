@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Download, FileSpreadsheet, FileText, Code, Crown, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { formatMoney } from "@/lib/utils";
 
 interface ResultsSectionProps {
   processedData: any;
@@ -89,14 +90,14 @@ const handleExportClick = (format: 'excel' | 'csv' | 'json') => {
               <div className="space-y-2 text-sm">
                 {isMultipleFiles ? (
                   <div>
-                    <p><strong>Total Items:</strong> {displayData.items?.length || 0}</p>
-                    <p><strong>Total Amount:</strong> ${displayData.totalAmount?.toFixed(2) || '0.00'}</p>
+                    <p><strong>Total Items:</strong> {displayData.summary?.totalItems ?? displayData.combinedItems?.length ?? 0}</p>
+                    <p><strong>Total Amount:</strong> {formatMoney(displayData.summary?.totalAmount)}</p>
                     <p><strong>Files Processed:</strong> {processedData.length}</p>
                   </div>
                 ) : (
                   <div>
                     <p><strong>Merchant:</strong> {displayData.merchant || 'Unknown'}</p>
-                    <p><strong>Total:</strong> ${displayData.total || '0.00'}</p>
+                    <p><strong>Total:</strong> {formatMoney(displayData.total)}</p>
                     <p><strong>Items:</strong> {displayData.items?.length || 0}</p>
                   </div>
                 )}

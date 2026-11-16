@@ -3,8 +3,9 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Calendar, DollarSign, Package, AlertCircle } from "lucide-react";
+import { FileText, Download, Calendar, Package, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { formatMoney } from "@/lib/utils";
 
 interface ProcessedFile {
   id: string;
@@ -116,8 +117,7 @@ const ProcessedFilesList: React.FC<ProcessedFilesListProps> = ({
                     )}
                     {file.total && (
                       <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        ${file.total}
+                        {formatMoney(file.total)}
                       </div>
                     )}
                     {file.itemCount && (
