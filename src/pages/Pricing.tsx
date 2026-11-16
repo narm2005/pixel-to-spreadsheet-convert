@@ -1,281 +1,179 @@
-import React from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Check, Star, Crown, BarChart3, Cloud, Smartphone, Mail, Calendar, Lock } from "lucide-react";
-import { useState } from "react";
+import { Check, Star, Crown, BarChart3, FileSpreadsheet, Layers, Smartphone } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
-import { useLemonSqueezy } from "@/hooks/useLemonSqueezy";
-import LemonSqueezySubscriptionManager from "@/components/premium/LemonSqueezySubscriptionManager";
+
+// Prices in rupees. Online payment isn't connected yet, so "Upgrade" opens an email to support.
+const PREMIUM_MONTHLY = 199;
+const PREMIUM_YEARLY = 1999; // about 2 months free
+const SUPPORT_EMAIL = "support@slickreceipts.com";
+
+const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+const upgradeMailto = (email: string | null | undefined, yearly: boolean) => {
+  const plan = yearly ? `Yearly (${rupees(PREMIUM_YEARLY)}/year)` : `Monthly (${rupees(PREMIUM_MONTHLY)}/month)`;
+  const subject = encodeURIComponent("Upgrade to SlickReceipts Premium");
+  const body = encodeURIComponent(
+    `Hi,\n\nI'd like to upgrade to Premium.\n\nPlan: ${plan}\nAccount email: ${email || ""}\n\nThanks`
+  );
+  return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+};
+
+const freeFeatures = ["10 receipts free", "Photo or PDF upload", "CSV download", "Receipt history"];
+const premiumFeatures = [
+  "Unlimited receipts",
+  "Upload many receipts at once and get one merged file",
+  "Excel, CSV and JSON downloads",
+  "Spending analytics by category and month",
+  "Priority email support",
+];
+
+const highlights = [
+  { icon: <Layers className="h-6 w-6 text-blue-600" />, title: "Merge many bills", text: "Scan a month's bills together and download one combined sheet." },
+  { icon: <FileSpreadsheet className="h-6 w-6 text-green-600" />, title: "Excel & JSON", text: "Open straight in Excel or share with your accountant." },
+  { icon: <BarChart3 className="h-6 w-6 text-purple-600" />, title: "Spending analytics", text: "See where your money goes, by category and by month." },
+  { icon: <Smartphone className="h-6 w-6 text-orange-600" />, title: "Works on your phone", text: "Install it like an app and snap bills with your camera." },
+];
+
+const faqs = [
+  { q: "Is there a free trial?", a: "Yes. Every account gets 10 receipts free, no card needed." },
+  { q: "How do I pay?", a: `Online payment is coming soon. For now, tap Upgrade and email us; we'll send UPI or bank details and switch your account to Premium.` },
+  { q: "Can I cancel?", a: "Yes. Premium simply stops at the end of the period you paid for; your receipts stay in your account." },
+  { q: "Is my data private?", a: "Only you can see your receipts. Photos are read and then discarded; only the extracted data is saved." },
+];
 
 const Pricing = () => {
   const [isYearly, setIsYearly] = useState(false);
   const { user } = useAuth();
-  const { createCheckout, isLoading } = useLemonSqueezy();
+  const isPremium = user?.tier === "premium";
 
-  const pricingPlans = [
-    {
-      name: "Freemium",
-      description: "Perfect for getting started",
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      popular: false,
-      features: [
-        "Up to 10 receipts total",
-        "Basic OCR extraction",
-        "CSV export only",
-        "Email support",
-        "30-day data retention"
-      ],
-      limitations: [
-        "Limited accuracy",
-        "No premium features",
-        "No analytics dashboard",
-        "No mobile app access"
-      ],
-      buttonText: "Get Started Free",
-      icon: null
-    },
-    {
-      name: "Premium",
-      description: "Unlimited processing with advanced features",
-      monthlyPrice: 9,
-      yearlyPrice: 90, // ~17% discount
-      popular: true,
-      features: [
-        "Unlimited receipt uploads",
-        "Advanced AI-powered OCR",
-        "Excel, CSV, JSON export",
-        "Expense analytics dashboard",
-        "Priority email support",
-        "1-year data retention",
-        "Advanced table recognition",
-        "Category auto-detection"
-      ],
-      buttonText: "Start Premium",
-      icon: <Crown className="h-5 w-5" />
-    }
-  ];
+  const navbar = (
+    <Navbar
+      isAuthenticated={!!user}
+      user={user ? { name: user.user_metadata?.name || user.email || undefined, picture: user.user_metadata?.picture || undefined } : undefined}
+    />
+  );
 
-  const premiumFeatures = [
-    {
-      icon: <BarChart3 className="h-6 w-6 text-blue-600" />,
-      title: "Expense Analytics",
-      description: "Visual dashboards with spending insights, category breakdowns, and monthly trends."
-    },
-    {
-      icon: <Cloud className="h-6 w-6 text-green-600" />,
-      title: "Cloud Storage & Sync",
-      description: "Access your receipts from anywhere with automatic cloud synchronization."
-    },
-    {
-      icon: <Smartphone className="h-6 w-6 text-purple-600" />,
-      title: "Mobile App Access",
-      description: "Upload and process receipts on-the-go with our mobile application."
-    },
-    {
-      icon: <Mail className="h-6 w-6 text-orange-600" />,
-      title: "Priority Support",
-      description: "Get faster response times with our priority email support channel."
-    },
-    {
-      icon: <Calendar className="h-6 w-6 text-red-600" />,
-      title: "Extended Retention",
-      description: "Keep your data for 1 full year vs. 30 days for free users."
-    },
-    {
-      icon: <Lock className="h-6 w-6 text-gray-600" />,
-      title: "Advanced Security",
-      description: "Enhanced data protection with enterprise-grade security features."
-    }
-  ];
+  if (isPremium) {
+    return (
+      <div className="min-h-screen bg-background">
+        {navbar}
+        <div className="mx-auto max-w-md px-4 py-16 text-center">
+          <Crown className="mx-auto mb-4 h-10 w-10 text-yellow-500" />
+          <h1 className="mb-2 text-2xl font-bold">You're on Premium</h1>
+          <p className="mb-6 text-muted-foreground">All features are unlocked. Thank you for supporting SlickReceipts!</p>
+          <Link to="/dashboard">
+            <Button size="lg">Go to Dashboard</Button>
+          </Link>
+          <p className="mt-6 text-sm text-muted-foreground">
+            Questions about your plan? <a className="underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  const handleSubscribe = async (plan: typeof pricingPlans[0]) => {
-    if (plan.name === "Freemium") {
-      window.location.href = "/signin";
-      return;
-    }
-
-    // For Premium plan - use Lemon Squeezy
-    try {
-      const planType = isYearly ? 'yearly' : 'monthly';
-      //console.log("planType", planType);
-      await createCheckout(planType);
-    } catch (error) {
-      console.error('Error creating checkout:', error);
-    }
-  };
+  const premiumPrice = isYearly ? Math.round(PREMIUM_YEARLY / 12) : PREMIUM_MONTHLY;
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar 
-        isAuthenticated={!!user}
-        user={user ? {
-          name: user.user_metadata?.name || user.email,
-          picture: user.user_metadata?.picture
-        } : undefined}
-      />
-      
-      <div className="container mx-auto px-6 py-16">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Simple, Transparent Pricing
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Choose the plan that's right for you. Start free, upgrade when you need more.
-          </p>
-          
-          {/* Monthly/Yearly Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <span className={`text-sm font-medium ${!isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
-              Monthly
-            </span>
-            <Switch
-              checked={isYearly}
-              onCheckedChange={setIsYearly}
-              className="data-[state=checked]:bg-primary"
-            />
-            <span className={`text-sm font-medium ${isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
-              Yearly
-            </span>
-            <Badge variant="secondary" className="ml-2">
-              Save 17%
-            </Badge>
+      {navbar}
+      <div className="container mx-auto px-4 py-10 md:px-6 md:py-16">
+        <div className="mb-10 text-center md:mb-14">
+          <h1 className="mb-3 text-3xl font-bold text-foreground md:text-5xl">Simple pricing</h1>
+          <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground">Start free. Upgrade when you have more bills to scan.</p>
+          <div className="flex items-center justify-center gap-3">
+            <span className={`text-sm font-medium ${!isYearly ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
+            <Switch checked={isYearly} onCheckedChange={setIsYearly} aria-label="Yearly billing" />
+            <span className={`text-sm font-medium ${isYearly ? "text-foreground" : "text-muted-foreground"}`}>Yearly</span>
+            <Badge variant="secondary">2 months free</Badge>
           </div>
         </div>
 
-        {/* Subscription Manager for authenticated users */}
-        {user && (
-          <div className="max-w-md mx-auto mb-12">
-            <LemonSqueezySubscriptionManager />
-          </div>
-        )}
+        <div className="mx-auto mb-16 grid max-w-4xl gap-6 md:grid-cols-2 md:gap-8">
+          <Card>
+            <CardHeader className="pb-4 text-center">
+              <CardTitle className="text-2xl font-bold">Free</CardTitle>
+              <CardDescription>Try it with your own bills</CardDescription>
+              <div className="mt-4 text-4xl font-bold">₹0</div>
+            </CardHeader>
+            <CardContent>
+              <ul className="mb-8 space-y-3">
+                {freeFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-sm">
+                    <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link to={user ? "/dashboard" : "/signin"}>
+                <Button variant="outline" className="w-full">{user ? "Go to Dashboard" : "Start free"}</Button>
+              </Link>
+            </CardContent>
+          </Card>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-20">
-          {pricingPlans.map((plan) => (
-            <Card 
-              key={plan.name} 
-              className={`relative ${plan.popular ? 'border-primary shadow-lg scale-105' : 'border-border'}`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground flex items-center gap-1">
-                    <Star className="h-3 w-3" />
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
-              
-              <CardHeader className="text-center pb-6">
-                <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
-                  {plan.icon}
-                  {plan.name}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {plan.description}
-                </CardDescription>
-                
-                <div className="mt-4">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold">
-                      ${isYearly ? 
-                        Math.floor((plan.yearlyPrice || 0) / 12) : 
-                        plan.monthlyPrice}
-                    </span>
-                    {plan.monthlyPrice > 0 && (
-                      <span className="text-muted-foreground">/month</span>
-                    )}
-                  </div>
-                  
-                  {plan.monthlyPrice > 0 && isYearly && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Billed annually (${plan.yearlyPrice}/year)
-                    </div>
-                  )}
-                </div>
+          <Card className="relative border-primary shadow-lg">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <Badge className="flex items-center gap-1 bg-primary text-primary-foreground">
+                <Star className="h-3 w-3" /> Most popular
+              </Badge>
+            </div>
+            <CardHeader className="pb-4 text-center">
+              <CardTitle className="flex items-center justify-center gap-2 text-2xl font-bold">
+                <Crown className="h-5 w-5" /> Premium
+              </CardTitle>
+              <CardDescription>For shops and businesses with regular bills</CardDescription>
+              <div className="mt-4 flex items-baseline justify-center gap-1">
+                <span className="text-4xl font-bold">{rupees(premiumPrice)}</span>
+                <span className="text-muted-foreground">/month</span>
+              </div>
+              {isYearly && <p className="mt-1 text-sm text-muted-foreground">Billed {rupees(PREMIUM_YEARLY)} per year</p>}
+            </CardHeader>
+            <CardContent>
+              <ul className="mb-8 space-y-3">
+                {premiumFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-sm">
+                    <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a href={upgradeMailto(user?.email, isYearly)}>
+                <Button className="w-full">Upgrade to Premium</Button>
+              </a>
+              <p className="mt-2 text-center text-xs text-muted-foreground">Opens an email to us. We'll reply with UPI / bank details.</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mx-auto mb-16 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {highlights.map((h) => (
+            <Card key={h.title} className="text-center">
+              <CardHeader className="pb-2">
+                <div className="mb-2 flex justify-center">{h.icon}</div>
+                <CardTitle className="text-base">{h.title}</CardTitle>
               </CardHeader>
-              
               <CardContent>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <Button 
-                  className={`w-full ${plan.popular ? 'bg-primary hover:bg-primary/90' : ''}`}
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleSubscribe(plan)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Loading...' : plan.buttonText}
-                </Button>
+                <CardDescription>{h.text}</CardDescription>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Premium Features Section */}
-        <div className="mb-20">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Premium Features</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Unlock the full potential of SlickReceipts with advanced features designed for power users.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {premiumFeatures.map((feature, index) => (
-              <Card key={index} className="text-center">
-                <CardHeader>
-                  <div className="flex justify-center mb-4">
-                    {feature.icon}
-                  </div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>{feature.description}</CardDescription>
-                </CardContent>
-              </Card>
+        <div className="mx-auto max-w-4xl">
+          <h2 className="mb-6 text-center text-2xl font-bold md:text-3xl">Questions</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            {faqs.map((f) => (
+              <div key={f.q}>
+                <h3 className="mb-1 font-semibold">{f.q}</h3>
+                <p className="text-sm text-muted-foreground">{f.a}</p>
+              </div>
             ))}
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="text-center">
-          <h2 className="text-3xl font-bold mb-8">Frequently Asked Questions</h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
-            <div>
-              <h3 className="font-semibold mb-2">Can I change plans at any time?</h3>
-              <p className="text-muted-foreground text-sm">
-                Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Is there a free trial?</h3>
-              <p className="text-muted-foreground text-sm">
-                Yes, you start with our Freemium plan that includes 10 free receipts to try our service.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">What payment methods do you accept?</h3>
-              <p className="text-muted-foreground text-sm">
-                We accept all major credit cards and PayPal through our secure Lemon Squeezy integration.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Is my data secure?</h3>
-              <p className="text-muted-foreground text-sm">
-                Yes, we use bank-level encryption and comply with industry security standards.
-              </p>
-            </div>
           </div>
         </div>
       </div>

@@ -344,11 +344,11 @@ useEffect(() => {
               </div>
 
               <div className="flex gap-2">
-                <Link to="/pricing">
-                  <Button variant="outline">
-                    {userTier === 'premium' ? 'Manage Subscription' : 'Upgrade to Premium'}
-                  </Button>
-                </Link>
+                {userTier !== 'premium' && (
+                  <Link to="/pricing">
+                    <Button variant="outline">Upgrade to Premium</Button>
+                  </Link>
+                )}
                 <Link to="/feedback">
                   <Button variant="outline">
                     <MessageSquare className="h-4 w-4 mr-2" />
