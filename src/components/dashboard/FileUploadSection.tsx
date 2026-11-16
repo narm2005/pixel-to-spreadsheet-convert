@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Crown, Camera, ImagePlus } from "lucide-react";
+import { Upload, Crown, Camera, ImagePlus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface FileUploadSectionProps {
@@ -13,6 +13,7 @@ interface FileUploadSectionProps {
   uploadProgress: number;
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDrop: (event: React.DragEvent) => void;
+  onRemoveFile?: (index: number) => void;
   onProcessFile: (files: File[]) => Promise<void>;
   userTier: "freemium" | "premium";
   fileCount: number;
@@ -24,6 +25,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   uploadProgress,
   onFileSelect,
   onDrop,
+  onRemoveFile,
   onProcessFile,
   userTier,
   fileCount,
@@ -32,7 +34,9 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   const [selectedForProcessing, setSelectedForProcessing] = React.useState<Set<number>>(new Set());
 
   const remainingFiles = userTier === "premium" ? "unlimited" : Math.max(0, 10 - fileCount);
+  const MAX_PER_UPLOAD = 10;
   const wouldExceedLimit = userTier === "freemium" && fileCount + selectedFiles.length > 10;
+  const tooManyAtOnce = selectedFiles.length > MAX_PER_UPLOAD;
 
   // Auto-select all files when selection changes
   React.useEffect(() => {
@@ -43,7 +47,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
 
   const handleProcessWrapper = async () => {
     if (isProcessing) return;
-    if (wouldExceedLimit) return;
+    if (wouldExceedLimit || tooManyAtOnce) return;
     if (selectedForProcessing.size === 0) return;
 
     const filesToProcess = selectedFiles.filter((_, i) =>
@@ -88,7 +92,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
           <input
             id="file-upload"
             type="file"
-            multiple={userTier === "premium"}
+            multiple
             accept="image/*,.pdf"
             onChange={onFileSelect}
             className="hidden"
@@ -108,7 +112,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
               <Button asChild size="lg" className="w-full h-14 text-base">
                 <span>
                   <Camera className="h-5 w-5 mr-2" />
-                  Take photo
+                  {selectedFiles.length ? "Take another photo" : "Take photo"}
                 </span>
               </Button>
             </label>
@@ -116,8 +120,8 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
               <Button asChild size="lg" variant="outline" className="w-full h-14 text-base md:h-11 md:text-sm">
                 <span>
                   <ImagePlus className="h-5 w-5 mr-2" />
-                  <span className="md:hidden">Choose from gallery</span>
-                  <span className="hidden md:inline">Select Files</span>
+                  <span className="md:hidden">{selectedFiles.length ? "Add from gallery" : "Choose from gallery"}</span>
+                  <span className="hidden md:inline">{selectedFiles.length ? "Add more files" : "Select Files"}</span>
                 </span>
               </Button>
             </label>
@@ -126,21 +130,51 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
         </div>
 
         {selectedFiles.length > 0 && (
-          <ul className="mt-3 space-y-1 text-sm text-gray-700">
-            {selectedFiles.map((f, i) => (
-              <li key={i} className="truncate">📄 {f.name}</li>
-            ))}
-          </ul>
+          <div className="mt-3">
+            <p className="text-sm font-medium text-gray-700 mb-1">
+              {selectedFiles.length} file{selectedFiles.length > 1 ? "s" : ""} ready
+            </p>
+            <ul className="divide-y rounded-md border text-sm text-gray-700">
+              {selectedFiles.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-2">
+                  <span className="flex-1 truncate">📄 {f.name}</span>
+                  {onRemoveFile && !isProcessing && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveFile(i)}
+                      className="p-2 -m-2 text-gray-400 hover:text-red-600"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {tooManyAtOnce && (
+              <p className="mt-2 text-sm text-red-600">You can process up to {MAX_PER_UPLOAD} files at a time. Remove a few.</p>
+            )}
+            {!tooManyAtOnce && wouldExceedLimit && (
+              <p className="mt-2 text-sm text-red-600">
+                Your free plan has {remainingFiles} file{remainingFiles === 1 ? "" : "s"} left. Remove some files or{" "}
+                <button type="button" className="underline" onClick={() => navigate("/pricing")}>upgrade to Premium</button>.
+              </p>
+            )}
+          </div>
         )}
 
         {selectedFiles.length > 0 && (
           <div className="mt-4">
             <Button
               onClick={handleProcessWrapper}
-              disabled={isProcessing || selectedForProcessing.size === 0}
+              disabled={isProcessing || selectedForProcessing.size === 0 || wouldExceedLimit || tooManyAtOnce}
               className="w-full h-12 text-base"
             >
-              {isProcessing ? "Processing..." : "Process Files"}
+              {isProcessing
+                ? "Processing..."
+                : selectedFiles.length > 1
+                  ? `Process ${selectedFiles.length} Files`
+                  : "Process Files"}
             </Button>
           </div>
         )}
