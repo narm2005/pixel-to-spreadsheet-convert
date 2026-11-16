@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator 
 } from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Menu, X, User, LogOut, BarChart3, Crown, Settings, MessageSquare } from "lucide-react";
 
 interface NavbarProps {
@@ -23,6 +24,9 @@ interface NavbarProps {
 const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  // Premium users don't need pricing or upgrade links.
+  const { user: account } = useAuth();
+  const isPremium = account?.tier === "premium";
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -59,6 +63,7 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
             >
               About
             </Link>
+            {!isPremium && (
             <Link 
               to="/pricing" 
               className={`text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors ${
@@ -67,6 +72,7 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
             >
               Pricing
             </Link>
+            )}
             <Link 
               to="/feedback" 
               className={`text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1 ${
@@ -118,12 +124,14 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  {!isPremium && (
                   <DropdownMenuItem asChild>
                     <Link to="/pricing" className="flex items-center gap-2">
                       <Crown className="h-4 w-4" />
                       Upgrade to Premium
                     </Link>
                   </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/feedback" className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
@@ -183,6 +191,7 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
               >
                 About
               </Link>
+              {!isPremium && (
               <Link 
                 to="/pricing" 
                 className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600"
@@ -190,6 +199,7 @@ const Navbar = ({ isAuthenticated = false, user, onSignOut }: NavbarProps) => {
               >
                 Pricing
               </Link>
+              )}
               <Link 
                 to="/feedback" 
                 className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600"
