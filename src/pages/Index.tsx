@@ -98,7 +98,7 @@ const Index = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">AI-Powered OCR</h3>
                 <p className="text-gray-600">
-                  Advanced optical character recognition extracts text from any receipt with 99% accuracy.
+                  Google Vision OCR reads printed bills and PDFs. You can check and fix every field before you download.
                 </p>
               </CardContent>
             </Card>
@@ -110,7 +110,7 @@ const Index = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Smart Data Extraction</h3>
                 <p className="text-gray-600">
-                  Automatically identifies merchants, dates, line items, taxes, and totals.
+                  Picks out the shop, date, items, GSTIN, invoice number, CGST/SGST and the total.
                 </p>
               </CardContent>
             </Card>
@@ -122,7 +122,7 @@ const Index = () => {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Export to Excel</h3>
                 <p className="text-gray-600">
-                  One-click export to Excel, CSV, or Google Sheets for further analysis.
+                  Download CSV or Excel, with a GST summary sheet ready to send to your CA.
                 </p>
               </CardContent>
             </Card>
@@ -335,7 +335,9 @@ const Index = () => {
               <h4 className="font-medium mb-4">Product</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><Link to="/#features" className="hover:text-white transition-colors">Features</Link></li>
-                <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                {user?.tier !== "premium" && (
+                  <li><Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                )}
                 <li><Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
                 <li><Link to="/analytics" className="hover:text-white transition-colors">Analytics</Link></li>
               </ul>

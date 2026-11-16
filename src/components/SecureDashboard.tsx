@@ -13,9 +13,14 @@ import PremiumGate from "./premium/PremiumGate";
 import { useSecureFileUpload } from "@/hooks/useSecureFileUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { 
   Upload, 
   History, 
@@ -25,7 +30,8 @@ import {
   Crown,
   User,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -37,6 +43,8 @@ const SecureDashboard = () => {
   const [userTier, setUserTier] = useState<'freemium' | 'premium'>('freemium');
   const [fileCount, setFileCount] = useState(0);
   const [activeSection, setActiveSection] = useState('upload');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const usage = user?.usage;
 
   const {
     selectedFile,
@@ -154,6 +162,21 @@ const handleExportRequest = (
 
   exportData(format, displayData);
 };
+
+  // Removes the user's receipts and account from the backend, then signs out.
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await api.delete('/auth/me');
+      // Local sign-out: forget the session on this device even if Supabase can't be reached,
+      // so the next page load doesn't recreate an empty account.
+      await supabase.auth.signOut({ scope: 'local' });
+      window.location.href = "/";
+    } catch (err: any) {
+      toast({ title: "Could not delete account", description: err.message, variant: "destructive" });
+      setDeletingAccount(false);
+    }
+  };
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -274,6 +297,7 @@ useEffect(() => {
           <ProcessedFilesList
             files={processedFiles}
             onDownload={handleFilesDownload}
+            onChanged={fetchProcessedFiles}
             userTier={userTier}
           />
         );
@@ -339,7 +363,14 @@ useEffect(() => {
               <div>
                 <h3 className="font-medium mb-2">Usage</h3>
                 <div className="text-sm text-gray-600">
-                  <p><strong>Files processed:</strong> {fileCount} {userTier === 'freemium' ? '/ 10' : '(unlimited)'}</p>
+                  {userTier === 'freemium' ? (
+                    <p><strong>Files processed:</strong> {fileCount} / 10</p>
+                  ) : (
+                    <>
+                      <p><strong>This month:</strong> {usage?.month_used ?? 0} of {(usage?.month_limit ?? 1000).toLocaleString('en-IN')} receipts</p>
+                      <p><strong>Today:</strong> {usage?.day_used ?? 0} of {usage?.day_limit ?? 100}</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -355,6 +386,34 @@ useEffect(() => {
                     Give Feedback
                   </Button>
                 </Link>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-1">Delete account</h3>
+                <p className="text-sm text-gray-600 mb-3">Permanently removes your receipts and account data.</p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete my account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        All your receipts and account data will be deleted and you will be signed out. This can't be undone.
+                        {userTier === 'premium' && " Your Premium plan ends too, and unused time is not refunded automatically."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction className="bg-red-600 hover:bg-red-700" disabled={deletingAccount} onClick={handleDeleteAccount}>
+                        {deletingAccount ? "Deleting..." : "Delete everything"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardContent>
           </Card>
@@ -456,7 +515,7 @@ useEffect(() => {
           {/* Main Content */}
           <div className="flex-1 min-w-0">
             <div className="max-w-6xl mx-auto px-4 py-4 pb-24 md:px-6 md:py-8 md:pb-8">
-              <DashboardHeader userTier={userTier} fileCount={fileCount} />
+              <DashboardHeader userTier={userTier} fileCount={fileCount} monthUsed={usage?.month_used} monthLimit={usage?.month_limit} />
               <PremiumQuickAccess userTier={userTier} />
               {renderContent()}
             </div>

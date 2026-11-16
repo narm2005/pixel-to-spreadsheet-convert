@@ -34,7 +34,7 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
   const [selectedForProcessing, setSelectedForProcessing] = React.useState<Set<number>>(new Set());
 
   const remainingFiles = userTier === "premium" ? "unlimited" : Math.max(0, 10 - fileCount);
-  const MAX_PER_UPLOAD = 10;
+  const MAX_PER_UPLOAD = 20;
   const wouldExceedLimit = userTier === "freemium" && fileCount + selectedFiles.length > 10;
   const tooManyAtOnce = selectedFiles.length > MAX_PER_UPLOAD;
 
@@ -72,13 +72,13 @@ const FileUploadSection: React.FC<FileUploadSectionProps> = ({
           {userTier === "premium" && (
             <Badge className="flex items-center gap-1">
               <Crown className="h-3 w-3" />
-              Unlimited
+              Premium
             </Badge>
           )}
         </CardTitle>
         <CardDescription>
           {userTier === "premium"
-            ? "Upload unlimited images or PDFs."
+            ? "Upload images or PDFs, up to 20 at a time (1,000 a month)."
             : `Upload images or PDFs. ${remainingFiles} files remaining.`}
         </CardDescription>
       </CardHeader>
