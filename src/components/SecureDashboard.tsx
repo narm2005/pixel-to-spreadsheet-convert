@@ -48,6 +48,7 @@ const SecureDashboard = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
+    removeFile,
   } = useSecureFileUpload();
 
   // Handle OAuth redirect on component mount
@@ -241,6 +242,7 @@ useEffect(() => {
               uploadProgress={uploadProgress}
               onFileSelect={handleFileSelect}
               onDrop={handleDrop}
+              onRemoveFile={removeFile}
               onProcessFile={() => handleProcessFile(selectedFiles)}
               userTier={userTier}
               fileCount={fileCount}

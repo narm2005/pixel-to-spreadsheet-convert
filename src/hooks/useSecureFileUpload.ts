@@ -16,14 +16,27 @@ export const useSecureFileUpload = () => {
 
   const selectedFile = selectedFiles[0] ?? null;
 
+  // New picks are added to the list (so you can take several photos one after another).
+  const addFiles = (files: File[]) => {
+    if (!files.length) return;
+    setSelectedFiles((prev) => {
+      const key = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+      const seen = new Set(prev.map(key));
+      return [...prev, ...files.filter((f) => !seen.has(key(f)))];
+    });
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedFiles(Array.from(e.target.files ?? []));
+    addFiles(Array.from(e.target.files ?? []));
+    e.target.value = ""; // lets the same camera/gallery button be used again
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    setSelectedFiles(Array.from(e.dataTransfer.files ?? []));
+    addFiles(Array.from(e.dataTransfer.files ?? []));
   };
+
+  const removeFile = (index: number) => setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
 
   const handleProcessFile = async (files: File[]) => {
     if (!user) {
@@ -57,6 +70,7 @@ export const useSecureFileUpload = () => {
         title: "Processing complete!",
         description: `Successfully processed ${data.receipts?.length || 0} file(s).`,
       });
+      setSelectedFiles([]);
       refreshUser();
       setTimeout(() => setUploadProgress(0), 2000);
     } catch (error: any) {
@@ -82,5 +96,6 @@ export const useSecureFileUpload = () => {
     handleFileSelect,
     handleDrop,
     handleProcessFile,
+    removeFile,
   };
 };
